@@ -24,6 +24,7 @@ export default function ReadingPage() {
   const startSessionStore = useReadingStore((s) => s.startSession);
   const setProgress = useReadingStore((s) => s.setProgress);
   const setHighlights = useReadingStore((s) => s.setHighlights);
+  const setTermDefinition = useReadingStore((s) => s.setTermDefinition);
 
   const showNudge = useFocusStore((s) => s.showNudge);
   const setActiveQuiz = useFocusStore((s) => s.setActiveQuiz);
@@ -53,6 +54,28 @@ export default function ReadingPage() {
 
         // Zustand store 세션 연동 시작
         startSessionStore(sessionData.article.id, sessionData.sessionId);
+
+        // 7/5 추가: 본문 속 핵심 단어들의 AI RAG 설명을 백그라운드에서 사전 프리페치(Prefetch)하여 hover 시 딜레이 없이 뜨게 함
+        const termsToPrefetch = [
+          '디지털 리터러시',
+          'LLM',
+          '환각 현상',
+          '인지부하',
+          '넛지',
+          'Literacy Score',
+        ];
+
+        termsToPrefetch.forEach((term) => {
+          api.getTermDefinition(sessionData.sessionId, term)
+            .then((res) => {
+              if (active) {
+                setTermDefinition(term, res.explanation);
+              }
+            })
+            .catch((err) => {
+              console.error(`[ReadingPage] Failed to prefetch term '${term}':`, err);
+            });
+        });
 
         // WebSocket 클라이언트 생성 및 활성화
         ws = createWsClient(sessionData.wsEndpoint);

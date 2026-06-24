@@ -26,7 +26,7 @@ export const TermTooltip: React.FC<TermTooltipProps> = ({
   const [aiDefinition, setAiDefinition] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
-  const { sessionId } = useReadingStore();
+  const { sessionId, termDefinitions, setTermDefinition } = useReadingStore();
 
   // 외부 클릭 시 닫기
   useEffect(() => {
@@ -42,7 +42,15 @@ export const TermTooltip: React.FC<TermTooltipProps> = ({
 
   // 7/5 추가: 어려운 단어/문장 클릭/호버 시 실시간 AI 주석 조회 (Content Reducer RAG 연동)
   useEffect(() => {
-    if (!isOpen || aiDefinition || isLoading) return;
+    if (!isOpen) return;
+
+    // 1. 이미 캐시에 존재한다면 네트워크 요청을 하지 않고 즉시 표시
+    if (termDefinitions[term]) {
+      setAiDefinition(termDefinitions[term]);
+      return;
+    }
+
+    if (aiDefinition || isLoading) return;
 
     let active = true;
     setIsLoading(true);
@@ -51,6 +59,7 @@ export const TermTooltip: React.FC<TermTooltipProps> = ({
       .then((res) => {
         if (active) {
           setAiDefinition(res.explanation);
+          setTermDefinition(term, res.explanation); // 다른 동일 툴팁 인스턴스들도 사용 가능하도록 캐시 저장
         }
       })
       .catch((err) => {
@@ -65,7 +74,7 @@ export const TermTooltip: React.FC<TermTooltipProps> = ({
     return () => {
       active = false;
     };
-  }, [isOpen, term, sessionId, aiDefinition, isLoading]);
+  }, [isOpen, term, sessionId, aiDefinition, isLoading, termDefinitions, setTermDefinition]);
 
   const tooltipBase: React.CSSProperties = {
     position: 'absolute',
@@ -139,7 +148,7 @@ export const TermTooltip: React.FC<TermTooltipProps> = ({
                   ⏳ AI가 RAG 문맥 주석을 생성하는 중...
                 </span>
               ) : (
-                aiDefinition || definition
+                aiDefinition || termDefinitions[term] || definition
               )}
             </span>
             <span
