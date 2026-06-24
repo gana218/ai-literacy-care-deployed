@@ -9,6 +9,7 @@ import XpCounter from '../components/gamification/XpCounter';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { useScoreStore } from '../stores/scoreStore';
+import { useReadingStore } from '../stores/readingStore';
 
 /**
  * DashboardPage — /dashboard
@@ -26,8 +27,8 @@ export default function DashboardPage() {
     level,
     levelProgress,
     quizResults,
-    scoreSeries,
   } = useScoreStore();
+  const { progress } = useReadingStore();
 
   useEffect(() => {
     document.title = 'AI 리터러시 케어 — 성장 대시보드';
@@ -113,7 +114,7 @@ export default function DashboardPage() {
               {[
                 { label: '퀴즈 풀이 수',   value: `${quizResults.length}문항` },
                 { label: '이해도 점수',    value: `${comprehensionScore}점` },
-                { label: '진행 구간',      value: `${scoreSeries.length - 7}단계` /* 히스토리 7개 제외 */ },
+                { label: '진행 구간',      value: `${[25, 50, 75, 90, 100].filter((m) => progress >= m).length}단계` },
                 { label: '퀴즈 정답률',    value: `${quizAccuracy}%` },
               ].map(({ label, value }) => (
                 <div key={label} className="flex justify-between text-xs">

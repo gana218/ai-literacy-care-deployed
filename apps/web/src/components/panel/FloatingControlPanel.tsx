@@ -5,6 +5,7 @@ import { useScoreStore } from '../../stores/scoreStore';
 import LevelBar from '../gamification/LevelBar';
 import XpCounter from '../gamification/XpCounter';
 import BadgeShelf from '../gamification/BadgeShelf';
+import { getActiveWsClient } from '../../lib/ws';
 
 // 집중도 수치에 따른 색상 매핑
 function getFocusColor(score: number): string {
@@ -33,6 +34,8 @@ export const FloatingControlPanel: React.FC = () => {
   const [logs, setLogs] = useState<{ id: string; time: string; msg: string; type: 'system' | 'nudge' | 'quiz' | 'xp' }[]>([]);
   const prevRef = useRef({ focusScore, nudgeLevel, isQuizVisible, progress, xp });
   const logContainerRef = useRef<HTMLDivElement>(null);
+  const [isOnline, setIsOnline] = useState(false);
+  const wasOnline = useRef(false);
 
   // 현재 시간 포맷팅 헬퍼
   const getNowString = () => {
@@ -45,6 +48,32 @@ export const FloatingControlPanel: React.FC = () => {
     setLogs([
       { id: 'init', time: getNowString(), msg: '🤖 리터러시 에이전트 오케스트레이터 가동 완료', type: 'system' }
     ]);
+  }, []);
+
+  // 7/6 추가: 실시간 WebSocket 연결 모니터링 및 연결 로그 출력
+  useEffect(() => {
+    const checkStatus = () => {
+      const ws = getActiveWsClient();
+      const online = !!(ws && ws.isConnected());
+      if (online !== wasOnline.current) {
+        if (online) {
+          setLogs((prev) => [
+            ...prev,
+            { id: Math.random().toString(), time: getNowString(), msg: '🔌 백엔드 WebSocket 서버와 연결되었습니다.', type: 'system' as const }
+          ].slice(-55));
+        } else if (wasOnline.current) {
+          setLogs((prev) => [
+            ...prev,
+            { id: Math.random().toString(), time: getNowString(), msg: '🔌 백엔드 연결 해제. 로컬 시뮬레이션 모드로 전환합니다.', type: 'system' as const }
+          ].slice(-55));
+        }
+        wasOnline.current = online;
+        setIsOnline(online);
+      }
+    };
+    checkStatus();
+    const interval = setInterval(checkStatus, 1000);
+    return () => clearInterval(interval);
   }, []);
 
   // 지표 모니터링을 통한 실시간 개입 로그 추가
@@ -226,9 +255,18 @@ export const FloatingControlPanel: React.FC = () => {
             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', fontWeight: 600 }}>
               🤖 실시간 에이전트 개입 로그
             </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span className="animate-pulse" style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'var(--color-success)' }} />
-              <span style={{ fontSize: '9px', fontWeight: 700, color: 'var(--color-success)', letterSpacing: '0.05em' }}>LIVE</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {isOnline ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span className="animate-pulse" style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-success)' }} />
+                  <span style={{ fontSize: '9px', fontWeight: 700, color: 'var(--color-success)', letterSpacing: '0.05em' }}>ONLINE</span>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#f59e0b' }} />
+                  <span style={{ fontSize: '9px', fontWeight: 700, color: '#f59e0b', letterSpacing: '0.05em' }}>OFFLINE</span>
+                </div>
+              )}
             </div>
           </div>
           <div

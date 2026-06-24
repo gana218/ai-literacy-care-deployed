@@ -25,6 +25,8 @@ export const SessionSummaryCard: React.FC<SessionSummaryCardProps> = ({ isVisibl
     ? Math.round((correctCount / quizResults.length) * 100)
     : null;
 
+  const sessionXpEarned = quizResults.reduce((sum, r) => sum + r.xpAwarded, 0);
+
   // 이번 세션에서 획득한 배지 (최근 2개 이내)
   const sessionBadges = badges.slice(-2);
 
@@ -76,8 +78,8 @@ export const SessionSummaryCard: React.FC<SessionSummaryCardProps> = ({ isVisibl
                 sub={quizAccuracy !== null ? `퀴즈 정답률 ${quizAccuracy}%` : '퀴즈 없음'} />
               <MiniMetric label="집중도" value={`${engagementScore}점`} color="var(--color-engagement)"
                 sub="평균 집중도" />
-              <MiniMetric label="획득 XP" value={`✨ ${xp}`} color="var(--color-xp)"
-                sub="누적 경험치" />
+              <MiniMetric label="획득 XP" value={`✨ +${sessionXpEarned}`} color="var(--color-xp)"
+                sub={`누적: ${xp} XP`} />
             </div>
 
             {/* 라이브 차트 (소형) */}
