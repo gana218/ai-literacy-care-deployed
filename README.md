@@ -1,4 +1,4 @@
-# AI Literacy Care Backend (Role 3)
+# AI Literacy Care Backend
 
 본 저장소는 2026 AI/SW 경진대회 프로젝트의 **3번 역할(Cognitive Care Agent 및 실시간 데이터 파이프라인)** 코드를 담고 있습니다.
 
