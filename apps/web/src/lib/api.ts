@@ -138,11 +138,26 @@ export const api = {
       const res = await fetch(`${BASE_URL}/api/session/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(req),
+        body: JSON.stringify({
+          user_id: req.userId,
+          document_id: req.articleId,
+        }),
       });
       if (res.ok) {
         const data = await res.json();
-        return data;
+        return {
+          sessionId: data.session_id,
+          article: {
+            id: req.articleId,
+            title: sampleArticle.title,
+            category: sampleArticle.category,
+            author: sampleArticle.author,
+            publishedAt: sampleArticle.publishedAt,
+            content: sampleArticle.content,
+            difficulty: 0.6,
+          },
+          wsEndpoint: `${BASE_URL.replace(/^http/, 'ws')}/ws/reading/${data.session_id}`,
+        };
       }
     } catch (err) {
       console.error('[API] Failed to startSession from server, falling back to mock:', err);
