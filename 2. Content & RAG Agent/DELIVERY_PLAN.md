@@ -413,16 +413,16 @@ Phase 5의 목표는 7/14까지 제출 가능한 상태를 확인하고, **2번 
 
 M0 종료 전 확인할 항목:
 
-- [ ] `backend/app/agents/content_reducer/` 폴더가 있다.
-- [ ] `ARCHITECTURE_2.md`가 있다.
-- [ ] `DELIVERY_PLAN_2.md`가 있다.
-- [ ] `contracts.py`에 `ContentReducerRequest`, `ContentReducerResponse` 타입이 있다.
-- [ ] `content_reducer_stub.py`가 있다.
-- [ ] stub이 1번 Orchestrator E2E 흐름에서 동작한다.
-- [ ] stub 출력에 `chunks`, `terms`, `difficulty_score` 필드가 있다.
-- [ ] stub 출력에 `trace` 기록이 있다.
-- [ ] chunk_id 규칙이 팀 전체에 공유되었다.
-- [ ] `readability.py`와 `chunker.py`의 최소 테스트가 있다.
+- [x] `backend/app/agents/content_reducer/` 폴더가 있다.
+- [x] `2_ARCHITECTURE.md`가 있다. (현재 `2/2_ARCHITECTURE.md`로 이동 및 정리 완료)
+- [x] `2_DELIVERY_PLAN.md`가 있다. (현재 `2/2_DELIVERY_PLAN.md`로 이동 및 정리 완료)
+- [x] `contracts.py`에 `ContentReducerRequest`, `ContentReducerResponse` 타입이 있다.
+- [x] `content_reducer_stub.py`가 있다.
+- [x] stub이 1번 Orchestrator E2E 흐름에서 동작한다.
+- [x] stub 출력에 `chunks`, `terms`, `difficulty_score` 필드가 있다.
+- [x] stub 출력에 `trace` 기록이 있다.
+- [x] chunk_id 규칙이 팀 전체에 공유되었다.
+- [x] `readability.py`와 `chunker.py`의 최소 테스트가 있다.
 
 ---
 
@@ -430,16 +430,16 @@ M0 종료 전 확인할 항목:
 
 M1 종료 전 확인할 항목:
 
-- [ ] 샘플 뉴스/논문 1편으로 파이프라인이 실행된다.
-- [ ] `difficulty_score`가 0~100 범위로 반환된다.
-- [ ] 원문이 3개 이상의 chunk로 분할된다.
-- [ ] 각 chunk에 `chunk_id`, `char_start`, `char_end`가 포함된다.
-- [ ] 각 chunk에 `restructured_text`가 포함된다.
-- [ ] `terms` 배열에 `term`, `definition`, `source`가 있다.
-- [ ] `faithfulness_score`가 term에 포함된다.
-- [ ] LLM 실패 시 원문이 그대로 반환된다.
-- [ ] RAG 실패 시 `terms = []`이 반환된다.
-- [ ] 파이프라인이 3회 반복 실행되어도 실패하지 않는다.
+- [x] 샘플 뉴스/논문 1편으로 파이프라인이 실행된다.
+- [x] `difficulty_score`가 0~100 범위로 반환된다.
+- [x] 원문이 3개 이상의 chunk로 분할된다.
+- [x] 각 chunk에 `chunk_id`, `char_start`, `char_end`가 포함된다.
+- [x] 각 chunk에 `restructured_text`가 포함된다.
+- [x] `terms` 배열에 `term`, `definition`, `source`가 있다.
+- [x] `faithfulness_score`가 term에 포함된다.
+- [x] LLM 실패 시 원문이 그대로 반환된다.
+- [x] RAG 실패 시 `terms = []`이 반환된다.
+- [x] 파이프라인이 3회 반복 실행되어도 실패하지 않는다.
 
 ---
 
@@ -447,14 +447,14 @@ M1 종료 전 확인할 항목:
 
 M2 종료 전 확인할 항목:
 
-- [ ] 1번 Orchestrator에 실제 `run_content_reducer(state)` 모듈이 연결된다.
-- [ ] 3번 행동 데이터의 `chunk_id`와 2번 청킹의 `chunk_id`가 일치한다.
-- [ ] 4번 프론트가 `chunks` / `terms` JSON을 렌더링할 수 있다.
-- [ ] 5번 QA가 `faithfulness_score`와 `trace`를 받을 수 있다.
-- [ ] `generate_quiz(chunk_id, context)`가 유효한 퀴즈를 반환한다.
-- [ ] 퀴즈 유효성 검사 실패 시 fallback 퀴즈가 반환된다.
-- [ ] stub/real 모듈 전환 방식이 있다.
-- [ ] `test_content_e2e.py`가 통과한다.
+- [x] 1번 Orchestrator에 실제 `run_content_reducer(state)` 모듈이 연결된다.
+- [x] 3번 행동 데이터의 `chunk_id`와 2번 청킹의 `chunk_id`가 일치한다.
+- [x] 4번 프론트가 `chunks` / `terms` JSON을 렌더링할 수 있다.
+- [x] 5번 QA가 `faithfulness_score`와 `trace`를 받을 수 있다.
+- [x] `generate_quiz(chunk_id, context)`가 유효한 퀴즈를 반환한다.
+- [x] 퀴즈 유효성 검사 실패 시 fallback 퀴즈가 반환된다.
+- [x] stub/real 모듈 전환 방식이 있다.
+- [x] `test_content_e2e.py`가 통과한다.
 
 ---
 
@@ -687,32 +687,32 @@ git commit -m "fix: stabilize content pipeline and improve faithfulness"
 
 최종 제출 전 2번 역할 확인:
 
-- [ ] `ARCHITECTURE_2.md` 작성 완료
-- [ ] `DELIVERY_PLAN_2.md` 작성 완료
-- [ ] `contracts.py`에 ContentReducerRequest / ContentReducerResponse 정의
-- [ ] `content_reducer_stub.py` 구현 및 1번 연결 확인
-- [ ] `readability.py` 구현 및 테스트 통과
-- [ ] `chunker.py` 구현 (chunk_id 규칙 포함) 및 테스트 통과
-- [ ] `restructurer.py` 구현 및 LLM 라우팅 적용
-- [ ] `prompts.py` 재구성 프롬프트 분리
-- [ ] `rag_engine.py` 구현 (pgvector 연동, faithfulness 검증)
-- [ ] `quiz_generator.py` 구현 및 유효성 검사
-- [ ] `fallbacks.py` 각 서브모듈 fallback 정의
-- [ ] `agent.py` 에이전트 진입점 (`run_content_reducer`) 구현
-- [ ] `test_readability.py` 통과
-- [ ] `test_chunker.py` 통과
-- [ ] `test_rag_engine.py` 통과
-- [ ] `test_quiz_generator.py` 통과
-- [ ] `test_content_e2e.py` 통과
-- [ ] `docs/CONTENT_AGENT_CONTRACT.md` 작성
-- [ ] `docs/RAG_ARCHITECTURE.md` 작성
-- [ ] `docs/QUIZ_DESIGN.md` 작성
-- [ ] `docs/READABILITY_FORMULA.md` 작성
-- [ ] 1번 Orchestrator 실제 연결 완료
-- [ ] 3번 chunk_id 매핑 확인
-- [ ] 4번 프론트 JSON 형식 확인
-- [ ] 5번 QA trace/faithfulness_score 전달 확인
-- [ ] M1 파이프라인 3회 이상 반복 성공
+- [x] `2_ARCHITECTURE.md` 작성 완료 (현재 `2/2_ARCHITECTURE.md`로 이동 및 정리 완료)
+- [x] `2_DELIVERY_PLAN.md` 작성 완료 (현재 `2/2_DELIVERY_PLAN.md`로 이동 및 정리 완료)
+- [x] `contracts.py`에 ContentReducerRequest / ContentReducerResponse 정의
+- [x] `content_reducer_stub.py` 구현 및 1번 연결 확인
+- [x] `readability.py` 구현 및 테스트 통과
+- [x] `chunker.py` 구현 (chunk_id 규칙 포함) 및 테스트 통과
+- [x] `restructurer.py` 구현 및 LLM 라우팅 적용
+- [x] `prompts.py` 재구성 프롬프트 분리
+- [x] `rag_engine.py` 구현 (pgvector 연동, faithfulness 검증)
+- [x] `quiz_generator.py` 구현 및 유효성 검사
+- [x] `fallbacks.py` 각 서브모듈 fallback 정의
+- [x] `agent.py` 에이전트 진입점 (`run_content_reducer`) 구현
+- [x] `test_readability.py` 통과
+- [x] `test_chunker.py` 통과
+- [x] `test_rag_engine.py` 통과
+- [x] `test_quiz_generator.py` 통과
+- [x] `test_content_e2e.py` 통과
+- [x] `docs/CONTENT_AGENT_CONTRACT.md` 작성
+- [x] `docs/RAG_ARCHITECTURE.md` 작성
+- [x] `docs/QUIZ_DESIGN.md` 작성
+- [x] `docs/READABILITY_FORMULA.md` 작성
+- [x] 1번 Orchestrator 실제 연결 완료
+- [x] 3번 chunk_id 매핑 확인
+- [x] 4번 프론트 JSON 형식 확인
+- [x] 5번 QA trace/faithfulness_score 전달 확인
+- [x] M1 파이프라인 3회 이상 반복 성공
 - [ ] M3 이후 구조 변경 없음
 - [ ] 발표용 RAG 환각 방지 설명 준비
 
