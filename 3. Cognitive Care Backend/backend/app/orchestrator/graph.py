@@ -104,8 +104,8 @@ def _run_cognitive_care(state: ReadingSessionState) -> ReadingSessionState:
         events_data.append({
             "timestamp_ms": e.get("timestamp_ms", 0),
             "type": e.get("type", "unknown"),
-            "position": metadata.get("position"),
-            "duration_ms": metadata.get("duration_ms")
+            "position": e.get("position", metadata.get("position")),
+            "duration_ms": e.get("duration_ms", metadata.get("duration_ms")) or 1000
         })
     
     focus_score = calculate_focus_score(events_data)
@@ -123,29 +123,12 @@ def _run_cognitive_care(state: ReadingSessionState) -> ReadingSessionState:
         "detail": {"focus_score": focus_score, "intervention_level": intervention_level}
     })
     
-    return state
-
-
-def _run_reward(state: ReadingSessionState) -> ReadingSessionState:
-    """Reward 계산 (4번 역할)."""
-    literacy = state.get("literacy_score", 0.0)
-    xp = calculate_xp(literacy_score=literacy, completed=True)
-    
-    profile = state.get("profile", {})
-    total_sessions = profile.get("total_sessions", 0) + 1
-    engagement = state.get("engagement_score", 0.0)
-    
-    new_badges = check_badges(
-        total_sessions=total_sessions,
-        literacy_score=literacy,
-        engagement_score=engagement,
-        existing_badge_ids=profile.get("badges", []),
-    )
-    
-    state["reward"] = {
-        "xp": xp,
-        "badges": new_badges,
-        "message": f"+{xp} XP 획득!" if xp > 0 else "",
+    # 2. Score Engine Stub (1번 역할 추가 구현 예정)
+    state["literacy_score"] = 85.0
+    state["score_breakdown"] = {
+        "comprehension_score": 90.0,
+        "engagement_score": focus_score,
+        "difficulty_score": 50.0
     }
     
     state["trace"].append({

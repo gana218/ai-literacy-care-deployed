@@ -6,8 +6,8 @@ import os
 # PostgreSQL URL
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg://admin:password@localhost:5432/literacy_care")
 
-# PostgreSQL 연결 검증 여부 플래그
-_db_verified = False
+engine = create_async_engine(DATABASE_URL, echo=bool(os.getenv("SQL_ECHO")))
+AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 if DATABASE_URL.startswith("postgresql"):
     engine = create_async_engine(

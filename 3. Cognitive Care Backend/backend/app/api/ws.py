@@ -32,9 +32,7 @@ def to_reading_event(front_event: dict) -> dict:
 @router.websocket("/reading/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     await websocket.accept()
-    print(f"[WS] Client connected: session={session_id}")
-    
-    redis_client = None
+    redis_client = await get_redis()
     redis_key = f"session:{session_id}:events"
     
     try:
@@ -125,24 +123,9 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 
             except json.JSONDecodeError:
                 await websocket.send_text(json.dumps({"type": "error", "payload": {"message": "Invalid JSON format"}}))
-            except Exception as e:
-                print(f"[WS] Error processing event for {session_id}: {e}")
-                traceback.print_exc()
-                error_resp = {"type": "error", "payload": {"message": f"Server error: {str(e)[:100]}"}}
-                await websocket.send_text(json.dumps(error_resp))
-
+                
+                
     except WebSocketDisconnect:
-        print(f"[WS] Client disconnected: session={session_id}")
-    except Exception as e:
-        print(f"[WS] Unexpected error for session {session_id}: {e}")
-        traceback.print_exc()
+        print(f"Client {session_id} disconnected")
     finally:
-        # 안전한 정리
-        if redis_client:
-            try:
-                # Redis TTL 확인 (데이터는 유지, TTL만 갱신)
-                await redis_client.expire(redis_key, 86400)
-                await redis_client.aclose()
-            except Exception:
-                pass
-        print(f"[WS] Cleanup complete for session={session_id}")
+        await redis_client.aclose()
