@@ -147,8 +147,18 @@ function showTooltip(x, y, termData) {
   
   const tooltip = document.createElement('div');
   tooltip.className = 'rag-tooltip';
-  tooltip.style.left = `${x + 10}px`;
-  tooltip.style.top = `${y + 10}px`;
+
+  // 화면 오른쪽/아래 경계 감지 — 툴팁이 잘리지 않도록
+  const tooltipWidth = 290;
+  const tooltipLeft = (x + 10 + tooltipWidth > window.innerWidth)
+    ? Math.max(10, x - tooltipWidth - 10)
+    : x + 10;
+  const tooltipTop = (y + 10 + 150 > window.scrollY + window.innerHeight)
+    ? y - 150
+    : y + 10;
+
+  tooltip.style.left = `${tooltipLeft}px`;
+  tooltip.style.top = `${tooltipTop}px`;
   
   tooltip.innerHTML = `
     <span class="rag-tooltip-close">×</span>

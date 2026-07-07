@@ -2,11 +2,11 @@ import os
 import json
 import urllib.request
 
+# Gemini REST API 직접 호출 (SnowChat 게이트웨이 미사용)
+_GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+
 def is_snowchat_available() -> bool:
-    """
-    SnowChat API 키가 환경 변수에 설정되어 있는지 확인한다.
-    GEMINI_API_KEY 또는 SNOWCHAT_API_KEY 중 하나라도 있으면 사용 가능.
-    """
+    """GEMINI_API_KEY가 설정되어 있는지 확인한다."""
     api_key = os.getenv("GEMINI_API_KEY", "") or os.getenv("SNOWCHAT_API_KEY", "")
     if not api_key or api_key.startswith("your_"):
         return False
@@ -14,47 +14,57 @@ def is_snowchat_available() -> bool:
 
 def _call_llm_via_snowchat(model: str, prompt: str, system_instruction: str | None = None) -> str:
     """
-    Mindlogic SnowChat API Gateway를 통해 LLM을 호출한다.
-    GEMINI_API_KEY를 Bearer 토큰으로 사용해 Gemini 모델을 호출하는 프록시 방식.
-    2번 팀(Content & RAG) 구현과 동일 방식으로 통일.
+    Gemini REST API를 직접 호출한다 (SDK 설치 불필요).
+    model: gemini-2.5-flash, gemini-2.0-flash 등
     """
     api_key = os.getenv("GEMINI_API_KEY", "") or os.getenv("SNOWCHAT_API_KEY", "")
     if not api_key or api_key.startswith("your_"):
-        raise ValueError("SnowChat API key is not configured.")
+        raise ValueError("GEMINI_API_KEY is not configured.")
 
-    url = "https://factchat-cloud.mindlogic.ai/v1/gateway/chat/completions"
-    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    url = f"{_GEMINI_API_BASE}/{model}:generateContent?key={api_key}"
 
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        "User-Agent": user_agent
-    }
-
-    messages = []
+    contents = []
     if system_instruction:
-        messages.append({"role": "system", "content": system_instruction})
-    messages.append({"role": "user", "content": prompt})
+        contents.append({
+            "role": "user",
+            "parts": [{"text": f"[시스템 지시] {system_instruction}\n\n{prompt}"}]
+        })
+    else:
+        contents.append({
+            "role": "user",
+            "parts": [{"text": prompt}]
+        })
 
     payload = {
-        "model": model,
-        "messages": messages,
-        "max_tokens": 1024,
-        "temperature": 0.2
+        "contents": contents,
+        "generationConfig": {
+            "maxOutputTokens": 256,
+            "temperature": 0.2
+        }
     }
 
     req = urllib.request.Request(
         url,
         data=json.dumps(payload).encode("utf-8"),
-        headers=headers,
+        headers={"Content-Type": "application/json"},
         method="POST"
     )
 
     with urllib.request.urlopen(req, timeout=15) as response:
         res_data = json.loads(response.read().decode("utf-8"))
-        choices = res_data.get("choices", [])
-        if choices:
-            content = choices[0].get("message", {}).get("content", "")
-            return content.strip()
+        candidates = res_data.get("candidates", [])
+        if candidates:
+            parts = candidates[0].get("content", {}).get("parts", [])
+            if parts:
+                text = parts[0].get("text", "").strip()
+                # 문장이 잘리면 마지막 완성 문장 단위까지 보존
+                if len(text) > 150:
+                    # 마지막 마침표 위치까지 잘라냄
+                    last_period = max(text.rfind('.'), text.rfind('입니다'), text.rfind('합니다'))
+                    if last_period > 50:
+                        text = text[:last_period+1]
+                    else:
+                        text = text[:150]
+                return text
 
-    raise ValueError("Empty response from SnowChat API.")
+    raise ValueError("Empty response from Gemini API.")
