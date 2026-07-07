@@ -174,3 +174,40 @@ def test_lookup_term_meta_tracing():
         assert "local" in res_missing["_meta"]["tried"]
         assert "llm_skipped_no_key" in res_missing["_meta"]["tried"]
 
+
+def test_disambiguate_homonyms_with_llm():
+    """동음이의어가 여러 개 검색되었을 때 LLM을 이용하여 문맥에 맞는 정의를 정밀 판별하는지 검증."""
+    from backend.app.agents.content_reducer.rag_engine import _disambiguate_homonyms_with_llm
+    
+    mock_items = [
+        {"word": "주가", "sense": {"definition": "주식 시장에서 거래되는 주식의 가격."}},
+        {"word": "주가", "sense": {"definition": "주인집. 또는 주인의 집."}}
+    ]
+    
+    # LLM이 1번 정의(주식 가격)를 선택하도록 모의
+    with patch("backend.app.agents.content_reducer.rag_engine._call_llm_via_snowchat") as mock_call, \
+         patch("backend.app.agents.content_reducer.rag_engine.is_snowchat_available") as mock_avail:
+        mock_avail.return_value = True
+        mock_call.return_value = "1"
+        
+        best = _disambiguate_homonyms_with_llm(
+            word="주가",
+            items=mock_items,
+            context="최근 IT 기술주의 주가가 폭락했습니다."
+        )
+        assert best["sense"]["definition"] == "주식 시장에서 거래되는 주식의 가격."
+        
+    # LLM이 2번 정의(주인집)를 선택하도록 모의
+    with patch("backend.app.agents.content_reducer.rag_engine._call_llm_via_snowchat") as mock_call, \
+         patch("backend.app.agents.content_reducer.rag_engine.is_snowchat_available") as mock_avail:
+        mock_avail.return_value = True
+        mock_call.return_value = "2"
+        
+        best = _disambiguate_homonyms_with_llm(
+            word="주가",
+            items=mock_items,
+            context="그는 마당이 넓은 주가로 이사를 했다."
+        )
+        assert best["sense"]["definition"] == "주인집. 또는 주인의 집."
+
+
