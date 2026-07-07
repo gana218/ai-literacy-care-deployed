@@ -35,12 +35,11 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tabId = tabs[0].id;
 
-      // 3초 타임아웃: 응답 없어도 낙관적으로 시작된 것으로 처리
+      // 3초 타임아웃: 응답 없어도 낙관적으로 처리
       let responded = false;
       const timeout = setTimeout(() => {
         if (!responded) {
           responded = true;
-          // 백엔드가 느려도 세션은 시작됐을 수 있음 → 상태만 업데이트
           chrome.storage.local.get(['sessionId'], (s) => {
             if (s.sessionId) setSessionActive(true);
             else statusText.textContent = "오류: 서버 연결 실패";
@@ -53,7 +52,6 @@ document.addEventListener('DOMContentLoaded', () => {
         responded = true;
         clearTimeout(timeout);
         if (chrome.runtime.lastError || !response) {
-          // lastError여도 세션이 시작됐을 수 있음
           chrome.storage.local.get(['sessionId'], (s) => {
             if (s.sessionId) setSessionActive(true);
             else statusText.textContent = "오류: 서버 연결 실패";
@@ -64,9 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
           statusText.textContent = "오류: 서버 연결 실패";
           btnStart.disabled = false;
         }
-      });
-    });
-  });
       });
     });
   });
