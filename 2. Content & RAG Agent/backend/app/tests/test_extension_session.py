@@ -58,9 +58,12 @@ def test_lookup_term_exact_and_alias():
     assert term_alias["source"] != "not_found"
     
     # 미존재 단어 테스트
-    term_missing = lookup_term("없는단어입니다")
-    assert term_missing["source"] == "not_found"
-    assert term_missing["definition"] == ""
+    with patch("backend.app.agents.content_reducer.rag_engine.is_snowchat_available") as mock_avail:
+        mock_avail.return_value = False
+        term_missing = lookup_term("없는단어입니다")
+        assert term_missing["source"] == "not_found"
+        assert term_missing["definition"] == ""
+
 
 
 def test_start_session_api_endpoint():
@@ -154,3 +157,20 @@ def test_lookup_term_llm_fallback(mock_query_api, mock_query_llm):
     assert res["definition"] == "문맥에서 유추한 실시간 단어 정의입니다."
     assert res["source"] == "LLM 실시간 유추"
     assert res["faithfulness_score"] == 1.0
+
+
+def test_lookup_term_meta_tracing():
+    """lookup_term 수행 시 _meta 필드에 tried 및 errors가 올바르게 기입되는지 검증."""
+    # 1. 로컬 매칭 성공 시
+    res_local = lookup_term("RAG")
+    assert "_meta" in res_local
+    assert "local" in res_local["_meta"]["tried"]
+    
+    # 2. 미등록 단어 매칭 실패 시 (전체 스텝 시도 후 error 가드 작동)
+    with patch("backend.app.agents.content_reducer.rag_engine.is_snowchat_available") as mock_avail:
+        mock_avail.return_value = False
+        res_missing = lookup_term("없는단어임")
+        assert "_meta" in res_missing
+        assert "local" in res_missing["_meta"]["tried"]
+        assert "llm_skipped_no_key" in res_missing["_meta"]["tried"]
+

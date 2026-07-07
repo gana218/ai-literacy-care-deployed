@@ -490,6 +490,8 @@ def _query_woorimalsem_api(word: str) -> dict | None:
 
         # 우리말샘 JSON 응답 구조 파싱
         items = data.get("channel", {}).get("item", [])
+        if isinstance(items, dict):
+            items = [items]
         if items:
             best_item = items[0]
             definition = best_item.get("sense", {}).get("definition", "")
@@ -504,8 +506,10 @@ def _query_woorimalsem_api(word: str) -> dict | None:
                 }
     except Exception as e:
         print(f"[rag_engine] 우리말샘 API 호출 실패: {e}")
+        raise e
 
     return None
+
 
 
 def _clean_korean_josa(word: str) -> str:
@@ -567,6 +571,7 @@ def _query_llm_definition(word: str, context: str | None = None) -> str | None:
             return result
     except Exception as e:
         print(f"[rag_engine] LLM 단어 실시간 유추 실패: {e}")
+        raise e
         
     return None
 
@@ -582,6 +587,9 @@ def lookup_term(word: str, context: str | None = None) -> TermDict:
       4. 사전에 없을 경우 기사 문맥을 바탕으로 한 LLM 실시간 의미 유추 시도
       5. 최종 미발견 시 source="not_found" 반환 (프론트가 조용히 무시)
     """
+    tried = []
+    errors = {}
+
     word_clean = word.strip()
     word_clean = re.sub(r"[^\w\s\-]", "", word_clean).strip()
     
@@ -591,7 +599,8 @@ def lookup_term(word: str, context: str | None = None) -> TermDict:
             definition="",
             source="not_found",
             faithfulness_score=0.0,
-            chunk_id=""
+            chunk_id="",
+            _meta={"tried": tried, "errors": errors}
         )
 
     # 매칭 시도할 단어 후보군 생성 (원문 자체, 그리고 조사 제거된 원형)
@@ -606,10 +615,12 @@ def lookup_term(word: str, context: str | None = None) -> TermDict:
             definition="",
             source="not_found",
             faithfulness_score=0.0,
-            chunk_id=""
+            chunk_id="",
+            _meta={"tried": tried, "errors": errors}
         )
 
     # 1. 완벽 매칭 (용어 또는 별칭)
+    tried.append("local")
     for w in word_candidates:
         w_lower = w.lower()
         for entry in _TERM_DICT:
@@ -621,24 +632,38 @@ def lookup_term(word: str, context: str | None = None) -> TermDict:
                     definition=entry.get("definition", ""),
                     source=entry.get("source", "로컬 사전"),
                     faithfulness_score=1.0,
-                    chunk_id=""
+                    chunk_id="",
+                    _meta={"tried": tried, "errors": errors}
                 )
 
     # 2. 우리말샘 오픈 API 조회 시도
+    api_key_woorimal = os.getenv("WOORIMAL_API_KEY", "") or os.getenv("DICTIONARY_API_KEY", "")
+    if api_key_woorimal:
+        tried.append("woorimal")
+    else:
+        tried.append("woorimal_skipped_no_key")
+
     for w in reversed(word_candidates):
-        api_res = _query_woorimalsem_api(w)
-        if api_res:
-            return TermDict(
-                term=api_res["term"],
-                definition=api_res["definition"],
-                source=api_res["source"],
-                faithfulness_score=1.0,
-                chunk_id=""
-            )
+        try:
+            api_res = _query_woorimalsem_api(w)
+            if api_res:
+                return TermDict(
+                    term=api_res["term"],
+                    definition=api_res["definition"],
+                    source=api_res["source"],
+                    faithfulness_score=1.0,
+                    chunk_id="",
+                    _meta={"tried": tried, "errors": errors}
+                )
+        except Exception as e:
+            errors["woorimal"] = str(e)
+            print(f"[rag_engine] 우리말샘 API 검색 중 에러: {e}")
+
 
     # 3. 임베딩 유사도 매칭 시도
     model = _get_embedding_model()
     if model is not None:
+        tried.append("embedding")
         try:
             # 조사 제거어로 임베딩 유사도 검색을 시도하여 품질 극대화
             query_vec = model.encode(cleaned_word).tolist()
@@ -657,21 +682,34 @@ def lookup_term(word: str, context: str | None = None) -> TermDict:
                         definition=best_entry.get("definition", ""),
                         source=best_entry.get("source", "RAG 유사 매칭"),
                         faithfulness_score=round(best_score, 4),
-                        chunk_id=""
+                        chunk_id="",
+                        _meta={"tried": tried, "errors": errors}
                     )
         except Exception as e:
+            errors["embedding"] = str(e)
             print(f"[rag_engine] 단어 lookup 임베딩 유사도 검색 실패: {e}")
+    else:
+        tried.append("embedding_skipped_no_model")
 
     # 4. LLM 실시간 의미 유추 시도 (동적 LLM 답변 생성 로직 - 필수)
-    llm_def = _query_llm_definition(cleaned_word, context)
-    if llm_def:
-        return TermDict(
-            term=cleaned_word,
-            definition=llm_def,
-            source="LLM 실시간 유추",
-            faithfulness_score=1.0,
-            chunk_id=""
-        )
+    if is_snowchat_available():
+        tried.append("llm")
+        try:
+            llm_def = _query_llm_definition(cleaned_word, context)
+            if llm_def:
+                return TermDict(
+                    term=cleaned_word,
+                    definition=llm_def,
+                    source="LLM 실시간 유추",
+                    faithfulness_score=1.0,
+                    chunk_id="",
+                    _meta={"tried": tried, "errors": errors}
+                )
+        except Exception as e:
+            errors["llm"] = str(e)
+            print(f"[rag_engine] 단어 lookup LLM 실시간 유추 중 에러: {e}")
+    else:
+        tried.append("llm_skipped_no_key")
 
     # 5. 최종 미발견 폴백
     return TermDict(
@@ -679,5 +717,7 @@ def lookup_term(word: str, context: str | None = None) -> TermDict:
         definition="",
         source="not_found",
         faithfulness_score=0.0,
-        chunk_id=""
+        chunk_id="",
+        _meta={"tried": tried, "errors": errors}
     )
+
