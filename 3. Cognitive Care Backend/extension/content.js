@@ -119,9 +119,16 @@ function handleTextSelection(e) {
       // Lookup term
       try {
         chrome.runtime.sendMessage({ type: "LOOKUP_TERM", word: selectedText, context }, (res) => {
-          if (chrome.runtime.lastError) return; // 확장 콘텍스트 상실 시 조용히 종료
+          if (chrome.runtime.lastError) return;
           if (res && res.success && res.term && res.term.source !== 'not_found' && res.term.definition) {
             showTooltip(e.pageX, e.pageY, res.term);
+          } else if (res && !res.success) {
+            // 네트워크 오류 시 간단한 안내 표시
+            showTooltip(e.pageX, e.pageY, {
+              term: selectedText,
+              definition: "현재 서버에 연결할 수 없습니다. 백엔드 서버가 켜져 있는지 확인해주세요.",
+              source: "연결 오류"
+            });
           }
         });
       } catch (err) {

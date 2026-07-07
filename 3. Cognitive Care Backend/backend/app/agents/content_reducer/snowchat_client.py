@@ -2,11 +2,10 @@ import os
 import json
 import urllib.request
 
-# Gemini REST API 직접 호출 (SnowChat 게이트웨이 미사용)
+# Gemini REST API 직접 호출 (SnowChat 403 에러 우회 및 429 핸들링)
 _GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
 def is_snowchat_available() -> bool:
-    """GEMINI_API_KEY가 설정되어 있는지 확인한다."""
     api_key = os.getenv("GEMINI_API_KEY", "") or os.getenv("SNOWCHAT_API_KEY", "")
     if not api_key or api_key.startswith("your_"):
         return False
@@ -14,14 +13,12 @@ def is_snowchat_available() -> bool:
 
 def _call_llm_via_snowchat(model: str, prompt: str, system_instruction: str | None = None) -> str:
     """
-    Gemini REST API를 직접 호출한다 (SDK 설치 불필요).
-    model: gemini-2.5-flash, gemini-2.0-flash 등
+    팀원의 코드가 이 함수를 사용하므로 인터페이스를 유지합니다.
+    내부적으로는 구글 Gemini REST API를 직접 호출합니다.
     """
     api_key = os.getenv("GEMINI_API_KEY", "") or os.getenv("SNOWCHAT_API_KEY", "")
-    if not api_key or api_key.startswith("your_"):
-        raise ValueError("GEMINI_API_KEY is not configured.")
 
-    url = f"{_GEMINI_API_BASE}/{model}:generateContent?key={api_key}"
+    url = f"{_GEMINI_API_BASE}/gemini-2.0-flash:generateContent?key={api_key}"
 
     contents = []
     if system_instruction:
@@ -38,8 +35,9 @@ def _call_llm_via_snowchat(model: str, prompt: str, system_instruction: str | No
     payload = {
         "contents": contents,
         "generationConfig": {
-            "maxOutputTokens": 256,
-            "temperature": 0.2
+            "maxOutputTokens": 512,
+            "temperature": 0.1,
+            "stopSequences": []
         }
     }
 
@@ -57,14 +55,49 @@ def _call_llm_via_snowchat(model: str, prompt: str, system_instruction: str | No
             parts = candidates[0].get("content", {}).get("parts", [])
             if parts:
                 text = parts[0].get("text", "").strip()
-                # 문장이 잘리면 마지막 완성 문장 단위까지 보존
-                if len(text) > 150:
-                    # 마지막 마침표 위치까지 잘라냄
-                    last_period = max(text.rfind('.'), text.rfind('입니다'), text.rfind('합니다'))
-                    if last_period > 50:
-                        text = text[:last_period+1]
-                    else:
-                        text = text[:150]
                 return text
 
     raise ValueError("Empty response from Gemini API.")
+
+def _query_gemini_llm(word: str, context: str | None = None) -> dict | None:
+    if not is_snowchat_available():
+        return None
+
+    try:
+        if context:
+            prompt = (
+                f"다음 기사 문맥을 고려하여 단어 '{word}'의 뜻을 설명해 주세요.\n"
+                f"조건: 1) 완성된 한 문장으로 2) '입니다' 또는 '합니다'로 끝내기 3) 100자 이내\n"
+                f"기사 문맥: {context[:200]}"
+            )
+        else:
+            prompt = (
+                f"단어 '{word}'의 뜻을 설명해 주세요.\n"
+                f"조건: 1) 완성된 한 문장으로 2) '입니다' 또는 '합니다'로 끝내기 3) 100자 이내"
+            )
+
+        result = _call_llm_via_snowchat(
+            model="gemini-2.0-flash",
+            prompt=prompt,
+            system_instruction="당신은 친절하고 정확한 국어사전입니다."
+        )
+
+        if result:
+            result = result.replace('"', '').replace("'", "").strip()
+            return {
+                "term": word,
+                "definition": result,
+                "source": "LLM 실시간 유추"
+            }
+    except urllib.error.HTTPError as e:
+        if e.code == 429:
+            return {
+                "term": word,
+                "definition": "💡 구글 API 요청 한도가 초과되었습니다. 잠시 후 다시 드래그해주세요.",
+                "source": "API 제한 초과"
+            }
+        print(f"[snowchat_client] HTTP 에러: {e.code}")
+    except Exception as e:
+        print(f"[snowchat_client] LLM API 에러: {e}")
+
+    return None
