@@ -33,3 +33,37 @@ def run_evaluation(sample: dict) -> dict:
         "average_score": average_score,
         "passed": is_passed(average_score, threshold=0.2),
     }
+
+def run_evaluation_pipeline(sample=None):
+    """
+    테스트용 평가 파이프라인
+    """
+
+    if sample is None:
+        sample = {
+            "raw_text": "머신러닝은 데이터를 통해 학습한다.",
+            "expected_quiz": "데이터",
+            "expected_answer": "머신러닝은 데이터를 통해 학습한다.",
+    }
+
+    return run_evaluation(sample)
+
+def run_evaluation_from_state(state: dict) -> dict:
+    """
+    Orchestrator의 ReadingSessionState를 받아 QA 평가를 수행한다.
+    """
+
+    sample = {
+        "raw_text": state.get("raw_text", ""),
+        "expected_quiz": str(state.get("quiz_result", "")),
+        "expected_answer": state.get("simplified_text", ""),
+    }
+
+    report = run_evaluation(sample)
+
+    report["session_id"] = state.get("session_id")
+    report["document_id"] = state.get("document_id")
+    report["has_trace"] = len(state.get("trace", [])) > 0
+    report["has_errors"] = len(state.get("errors", [])) > 0
+
+    return report
