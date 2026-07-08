@@ -118,7 +118,8 @@
 ### (B) 확장 추가 작업 (1번 담당분)
 
 > 확장 설계·계약·글루의 **대부분은 완료**(REST alias·shared 공용화·pdf.js 뷰어·익명 UUID 스키마).
-> 남은 것은 **실브라우저 통합 검증**과 **웹/PDF 왕복 E2E**다.
+> **웹 왕복 E2E·G6 정합은 실브라우저(Playwright)로 검증 완료**(개입 escalation→오버레이 렌더).
+> 남은 것은 **PDF 라이브 pdf.js**(실확장 로드 필요)와 온보딩 확인뿐.
 
 | 상태 | 작업 | 완료 기준 | 목표일 |
 |---|---|---|---|
@@ -126,9 +127,9 @@
 | ✅ | shared 공용화(tracker/overlay/session_client) | 웹·PDF 동일 모듈 재사용 | (완료) |
 | ✅ | pdf.js 자체 뷰어 + 텍스트 추출 | PDF 링크 리다이렉트→렌더→content[] | (완료) |
 | ✅ | 익명 UUID·consent 상태 스키마 + userId 계약 정합 | 로그인 없이 프로필 누적 | (완료) |
-| ⬜ | 확장 크롬 로드 → **웹 수동 E2E 왕복** | ON→기사 읽기→넛지/개입 오버레이 동작 확인 | 7/7 |
-| ⬜ | **PDF 왕복 E2E**(pdf.js) | PDF 링크→뷰어 전환→스크롤/개입 동작 확인 | 7/8 |
-| 🔄 | 확장↔백엔드 이벤트 스키마 최종 정합(G6) | 확장이 보내는 이벤트가 백엔드 계약과 일치 | 7/7 |
+| ✅ | 확장 크롬 로드 → **웹 수동 E2E 왕복** | ON→기사 읽기→넛지/개입 오버레이 동작 확인 *(7/8 Playwright 실브라우저: start→개입 escalation none→soft→medium→hard→오버레이 토스트+배지 렌더 시각 검증)* | 7/7 |
+| 🔄 | **PDF 왕복 E2E**(pdf.js) | PDF 링크→뷰어 전환→스크롤/개입 동작 확인 *(계약·공용 글루·어댑터 배선 검증 완료. 라이브 pdf.js 추출만 실확장 로드 필요 — chrome.runtime worker)* | 7/8 |
+| ✅ | 확장↔백엔드 이벤트 스키마 최종 정합(G6) | 확장이 보내는 이벤트가 백엔드 계약과 일치 *(tracker {type,timestamp_ms,position?,duration_ms?} = _normalize_events, 실브라우저 왕복 확인)* | 7/7 |
 | ⬜ | 온보딩/식별 연동 확인 | 팝업 동의→익명 UUID 발급→세션 userId 반영 | 7/8 |
 
 ### (C) 협업 대기 (타 역할, 1번은 계약 제공)
@@ -746,9 +747,9 @@ git commit -m "fix: stabilize orchestrator demo flow"
 - [x] pdf.js 자체 뷰어 + 텍스트 추출(content[])
 - [x] 익명 UUID·consent 상태 스키마 + userId 계약 정합
 - [x] REST(event-driven) 전송 확정(ADR-001) · 비용 0 원칙(ADR-002)
-- [ ] 확장 크롬 로드 → 웹 수동 E2E 왕복 ⬜ *(7/7 목표)*
-- [ ] PDF 왕복 E2E(pdf.js) ⬜ *(7/8 목표)*
-- [ ] 확장↔백엔드 이벤트 스키마 최종 정합(G6) 🔄 *(7/7 목표)*
+- [x] 확장 크롬 로드 → 웹 수동 E2E 왕복 ✅ *(7/8 Playwright 실브라우저: 개입 escalation + 오버레이 렌더 시각 검증)*
+- [ ] PDF 왕복 E2E(pdf.js) 🔄 *(계약·공용 글루·배선 검증. 라이브 pdf.js만 실확장 로드 필요)*
+- [x] 확장↔백엔드 이벤트 스키마 최종 정합(G6) ✅ *(실브라우저 왕복 확인)*
 
 ---
 
