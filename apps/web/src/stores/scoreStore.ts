@@ -26,12 +26,14 @@ interface ScoreState {
   levelProgress: number;
   scoreSeries: ScoreDataPoint[];  // 히스토리 + 현재 세션 포인트
   badges: AcquiredBadge[];
+  isFinalized: boolean; // 세션 최종 서버 점수 갱신 후 가드용 플래그
 
   // 6/26 추가: 현재 세션 퀴즈 결과 목록
   quizResults: QuizResult[];
 
   // 기존 액션
   setLiteracyScore: (score: number, comprehension: number, engagement: number) => void;
+  setFinalized: (finalized: boolean) => void; // 완료 플래그 액션
   addXp: (amount: number) => void;
   setScoreSeries: (series: ScoreDataPoint[]) => void;
   addBadge: (badge: AcquiredBadge) => void;
@@ -89,10 +91,13 @@ export const useScoreStore = create<ScoreState>((set, get) => ({
     { id: 'focus-master', name: '초집중 리더', emoji: '⚡', description: '평균 집중도 90% 이상 달성!',      acquiredAt: new Date().toISOString() },
   ],
   quizResults: [],
+  isFinalized: false,
 
   // ── 기존 액션 ──
   setLiteracyScore: (literacyScore, comprehensionScore, engagementScore) =>
     set({ literacyScore, comprehensionScore, engagementScore }),
+
+  setFinalized: (isFinalized) => set({ isFinalized }),
 
   addXp: (amount) =>
     set((s) => {
@@ -153,6 +158,7 @@ export const useScoreStore = create<ScoreState>((set, get) => ({
         { id: 'focus-master', name: '초집중 리더', emoji: '⚡', description: '평균 집중도 90% 이상 달성!',      acquiredAt: new Date().toISOString() },
       ],
       quizResults: [],
+      isFinalized: false,
     }),
 
   reset: () =>
@@ -160,5 +166,6 @@ export const useScoreStore = create<ScoreState>((set, get) => ({
       literacyScore: 0, comprehensionScore: 0, engagementScore: 0,
       xp: 0, level: 1, levelProgress: 0,
       scoreSeries: [], badges: [], quizResults: [],
+      isFinalized: false,
     }),
 }));

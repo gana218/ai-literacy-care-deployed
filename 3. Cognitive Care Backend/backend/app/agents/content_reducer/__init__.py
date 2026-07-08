@@ -1,1 +1,1 @@
-# backend.app.agents.content_reducer package
+# app.agents.content_reducer package

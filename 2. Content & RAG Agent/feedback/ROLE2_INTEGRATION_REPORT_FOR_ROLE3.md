@@ -25,7 +25,7 @@
 - **사용 모델**: `gemini-2.5-flash`
   - *이유*: 스노우챗 내 탑재된 최신 경량 모델로 속도가 매우 빠르고 한국어 재구성/단어 유추 퀄리티가 우수합니다.
 - **인증 방식**: Bearer Token 인증 (API 헤더 사용)
-- **발급 키**: `W21AiHIpDbcz5no1QRYu3vqCYcHYOjPA`
+- **발급 키**: `YOUR_SNOWCHAT_API_KEY` (배포된 .env 파일 참조)
 
 ### 📖 백과사전 정보: 국립국어원 우리말샘 오픈 API
 - **검색 엔드포인트**: `https://opendict.korean.go.kr/api/search`
@@ -43,7 +43,7 @@
 ### 🔑 환경 변수 설정 (`.env`)
 - 로컬 개발 환경의 `.env` 파일에 아래 변수를 정상적으로 세팅해 주세요. 스노우챗 API 키는 보안 가이드를 만족하는 `GEMINI_API_KEY` 변수에 입력됩니다:
   ```env
-  GEMINI_API_KEY=W21AiHIpDbcz5no1QRYu3vqCYcHYOjPA
+  GEMINI_API_KEY=YOUR_SNOWCHAT_API_KEY
   WOORIMAL_API_KEY=your_real_woorimalsem_api_key_here
   ```
 - 키가 누락되거나 틀려 실패할 경우, 시스템이 다운되지 않고 `_meta.errors` 필드에 에러 메시지를 기록한 뒤 조용히 `source="not_found"` 폴백으로 가드되도록 구현되었습니다.

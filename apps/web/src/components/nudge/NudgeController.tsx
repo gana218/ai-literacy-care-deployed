@@ -23,11 +23,11 @@ import HardNudge from '../nudge/HardNudge';
 import QuizCard from '../quiz/QuizCard';
 import { getActiveWsClient } from '../../lib/ws';
 
-/** focusScore → nudgeLevel 변환 */
+/** focusScore → nudgeLevel 변환 (백엔드 75/50/30 임계값과 동기화) */
 function scoreToNudgeLevel(score: number): 'none' | 'soft' | 'medium' | 'hard' {
-  if (score >= 80) return 'none';
-  if (score >= 60) return 'soft';
-  if (score >= 40) return 'medium';
+  if (score >= 75) return 'none';
+  if (score >= 50) return 'soft';
+  if (score >= 30) return 'medium';
   return 'hard';
 }
 

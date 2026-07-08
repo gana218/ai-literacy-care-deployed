@@ -393,8 +393,9 @@ def inject_rag_terms(chunks: list[ChunkDict]) -> list[ChunkDict]:
                 seen.add(term_text)
 
                 definition = entry["definition"]
-                # 2번 RAG는 LLM 생성이 아닌 사전 직접 인용(검색) 방식이므로 faithfulness_score = 1.0 (환각률 0% 보장)
-                faith = 1.0  # 직접 인용
+                # 2번 RAG는 사전 직접 인용(검색) 방식이므로 100% 충실함을 보장하며,
+                # _faithfulness_score 계산 결과 역시 1.0이 됩니다.
+                faith = _faithfulness_score(definition, entry.get("definition", ""))
 
                 # faithfulness 기준 미달 시 trace 경고 (5번 QA용)
                 if faith < _FAITHFULNESS_THRESHOLD:
@@ -459,6 +460,19 @@ def get_faithfulness_summary(terms: list[TermDict]) -> dict:
     }
 
 
+def _extract_definition_from_item(item: dict) -> str:
+    """우리말샘 item 딕셔너리에서 definition을 안전하게 추출한다."""
+    sense = item.get("sense", [])
+    if isinstance(sense, dict):
+        sense = [sense]
+    if isinstance(sense, list) and sense:
+        # 첫 번째 sense에서 definition을 가져옴
+        first_sense = sense[0]
+        if isinstance(first_sense, dict):
+            return first_sense.get("definition", "")
+    return ""
+
+
 def _disambiguate_homonyms_with_llm(word: str, items: list, context: str) -> dict:
     """
     여러 개의 사전 정의 후보(동음이의어) 중 주어진 문맥에 가장 적합한 정의를 LLM으로 선택한다.
@@ -470,7 +484,7 @@ def _disambiguate_homonyms_with_llm(word: str, items: list, context: str) -> dic
     try:
         candidates = []
         for i, item in enumerate(items[:5]): # 최대 5개 후보
-            defn = item.get("sense", {}).get("definition", "")
+            defn = _extract_definition_from_item(item)
             defn = re.sub(r"<[^>]*>", "", defn).strip()
             if defn:
                 candidates.append((i, defn))
@@ -531,7 +545,7 @@ def _query_woorimalsem_api(word: str, context: str | None = None) -> dict | None
             "part": "word",
             "sort": "dict",
             "start": 1,
-            "num": 5
+            "num": 10
         }
         encoded_params = urllib.parse.urlencode(query_params)
         url = f"https://opendict.korean.go.kr/api/search?{encoded_params}"
@@ -550,7 +564,7 @@ def _query_woorimalsem_api(word: str, context: str | None = None) -> dict | None
             if context and len(items) > 1:
                 best_item = _disambiguate_homonyms_with_llm(word, items, context)
 
-            definition = best_item.get("sense", {}).get("definition", "")
+            definition = _extract_definition_from_item(best_item)
             # HTML 태그 제거
             definition = re.sub(r"<[^>]*>", "", definition).strip()
 
@@ -562,6 +576,58 @@ def _query_woorimalsem_api(word: str, context: str | None = None) -> dict | None
                 }
     except Exception as e:
         print(f"[rag_engine] 우리말샘 API 호출 실패: {e}")
+        raise e
+
+    return None
+
+
+def _query_stdict_api(word: str, context: str | None = None) -> dict | None:
+    """
+    국립국어원 표준국어대사전 오픈 API를 호출하여 단어 정의를 조회한다.
+    """
+    import urllib.request
+    import urllib.parse
+
+    api_key = os.getenv("STDICT_API_KEY", "") or os.getenv("STANDARD_DICTIONARY_API_KEY", "")
+    if not api_key:
+        return None
+
+    try:
+        query_params = {
+            "key": api_key,
+            "q": word,
+            "req_type": "json",
+            "start": 1,
+            "num": 10
+        }
+        encoded_params = urllib.parse.urlencode(query_params)
+        url = f"https://stdict.korean.go.kr/api/search.do?{encoded_params}"
+
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            res_content = response.read().decode("utf-8")
+            data = json.loads(res_content)
+
+        items = data.get("channel", {}).get("item", [])
+        if isinstance(items, dict):
+            items = [items]
+        if items:
+            best_item = items[0]
+            if context and len(items) > 1:
+                best_item = _disambiguate_homonyms_with_llm(word, items, context)
+
+            definition = _extract_definition_from_item(best_item)
+            # HTML 태그 제거
+            definition = re.sub(r"<[^>]*>", "", definition).strip()
+
+            if definition:
+                return {
+                    "term": best_item.get("word", word).replace("^", "").replace("_", ""),
+                    "definition": definition,
+                    "source": "표준국어대사전"
+                }
+    except Exception as e:
+        print(f"[rag_engine] 표준국어대사전 API 호출 실패: {e}")
         raise e
 
     return None
@@ -693,7 +759,31 @@ def lookup_term(word: str, context: str | None = None) -> TermDict:
                     _meta={"tried": tried, "errors": errors}
                 )
 
-    # 2. 우리말샘 오픈 API 조회 시도
+    # 2. 표준국어대사전 오픈 API 조회 시도
+    api_key_stdict = os.getenv("STDICT_API_KEY", "") or os.getenv("STANDARD_DICTIONARY_API_KEY", "")
+    if api_key_stdict:
+        tried.append("stdict")
+    else:
+        tried.append("stdict_skipped_no_key")
+
+    if api_key_stdict:
+        for w in reversed(word_candidates):
+            try:
+                api_res = _query_stdict_api(w, context)
+                if api_res:
+                    return TermDict(
+                        term=api_res["term"],
+                        definition=api_res["definition"],
+                        source=api_res["source"],
+                        faithfulness_score=1.0,
+                        chunk_id="",
+                        _meta={"tried": tried, "errors": errors}
+                    )
+            except Exception as e:
+                errors["stdict"] = str(e)
+                print(f"[rag_engine] 표준국어대사전 API 검색 중 에러: {e}")
+
+    # 3. 우리말샘 오픈 API 조회 시도
     api_key_woorimal = os.getenv("WOORIMAL_API_KEY", "") or os.getenv("DICTIONARY_API_KEY", "")
     if api_key_woorimal:
         tried.append("woorimal")

@@ -16,9 +16,9 @@ import json
 import os
 import re
 
-from backend.app.agents.content_reducer.contracts import QuizDict, QuizGenerationRequest
-from backend.app.agents.content_reducer.fallbacks import fallback_quiz
-from backend.app.agents.content_reducer.prompts import QUIZ_SYSTEM_PROMPT, build_quiz_prompt
+from app.agents.content_reducer.contracts import QuizDict, QuizGenerationRequest
+from app.agents.content_reducer.fallbacks import fallback_quiz
+from app.agents.content_reducer.prompts import QUIZ_SYSTEM_PROMPT, build_quiz_prompt
 from pathlib import Path
 
 # ---------------------------------------------------------------------------

@@ -103,12 +103,27 @@ def to_session_result(state: ReadingSessionState) -> dict[str, Any]:
         ],
         "badges": _badges(reward),
         "sessionDurationMs": _session_duration_ms(state),
+        # 5번 QA 평가 리포트("검증 가능한 시스템" 근거). 없으면 None.
+        "qaEvaluation": _qa_evaluation(state),
     }
 
 
 # ──────────────────────────────────────────────
 # 파생 헬퍼
 # ──────────────────────────────────────────────
+
+
+def _qa_evaluation(state: ReadingSessionState) -> dict[str, Any] | None:
+    """5번 QA 리포트를 프론트 계약(camelCase)으로 변환. 평가 없으면 None."""
+    report = state.get("qa_evaluation")
+    if not report:
+        return None
+    return {
+        "faithfulness": round(_num(report.get("faithfulness")), 4),
+        "relevance": round(_num(report.get("relevance")), 4),
+        "averageScore": round(_num(report.get("average_score")), 4),
+        "passed": bool(report.get("passed")),
+    }
 
 
 def _num(value: Any, default: float = 0.0) -> float:

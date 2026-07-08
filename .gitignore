@@ -1,7 +1,39 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.vscode/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Vite cache
+.vite/
+
+# Backend specific rules
 venv/
 __pycache__/
 *.pyc
 .env
-.idea/
-.vscode/
 *.sqlite3
+*.db
+literacy_care.db
+
+

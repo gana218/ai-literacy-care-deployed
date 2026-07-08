@@ -71,16 +71,24 @@ def test_resolve_falls_back_to_stub_when_real_missing(monkeypatch):
     assert impl is _stub_marker
 
 
-def test_client_uses_real_bridge_when_selected(monkeypatch):
-    """content_reducer는 이제 real 브릿지(1번 임시)가 등록돼 있어, real 선택 시 브릿지가 실행된다.
+def test_client_uses_real_impl_when_selected(monkeypatch):
+    """content_reducer real 선택 시 2번 실구현(이식본)이 실행된다.
 
-    (Gemini 호출은 막고 오프라인 경로만 확인 — 스텁의 chunk_01이 아니라
-    2번 ChunkDict 형태 chunk_{document_id}_NN을 낸다.)
+    LLM 게이트웨이 키가 없으면 재구성은 데모로 안전 강등되지만, 결정론 파이프라인
+    (가독성·청킹·RAG 용어검색)은 실제로 돈다. 계약(chunks/simplified_text/terms/
+    difficulty_score)을 지키고, chunk_id는 2번 형식(chunk_{document_id}_NN)이다.
     """
-    from backend.app.agents.real import content_reducer_bridge
-
     monkeypatch.setenv("LITERACY_CONTENT_REDUCER_IMPL", "real")
-    monkeypatch.setattr(content_reducer_bridge, "_restructure", lambda text: None)
+    monkeypatch.setenv("CONTENT_REDUCER_MODE", "real")
+    # LLM 게이트웨이 키 제거 → 재구성은 데모 폴백(네트워크 호출 없음)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("SNOWCHAT_API_KEY", raising=False)
+
     result = run_content_reducer(_state())
+
+    # 스텁의 chunk_01이 아니라 2번 ChunkDict 형식
     assert result["chunks"][0]["chunk_id"].startswith("chunk_doc1_")
-    assert result["simplified_text"] == "Sample text"  # Gemini 폴백 → 원문
+    # 계약 필드 충족
+    assert isinstance(result["simplified_text"], str) and result["simplified_text"]
+    assert isinstance(result["terms"], list)
+    assert 0.0 <= result["difficulty_score"] <= 100.0

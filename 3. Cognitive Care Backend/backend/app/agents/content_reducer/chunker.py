@@ -14,8 +14,8 @@ from __future__ import annotations
 
 import re
 
-from backend.app.agents.content_reducer.contracts import ChunkDict
-from backend.app.agents.content_reducer.readability import analyze_readability
+from app.agents.content_reducer.contracts import ChunkDict
+from app.agents.content_reducer.readability import analyze_readability
 
 
 # ---------------------------------------------------------------------------

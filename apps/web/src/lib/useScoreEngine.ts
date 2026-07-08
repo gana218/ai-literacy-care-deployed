@@ -45,6 +45,7 @@ export function useScoreEngine() {
     updateLiveScore,
     setLiteracyScore,
     quizResults,
+    isFinalized,
   } = useScoreStore();
 
   const passedMilestones = useRef<Set<number>>(new Set());
@@ -75,6 +76,7 @@ export function useScoreEngine() {
 
   // ── 마일스톤 도달 시 차트에 새 포인트 추가 ────────────────────────
   useEffect(() => {
+    if (isFinalized) return;
     const milestone = MILESTONES.find(
       (m) => progress >= m && !passedMilestones.current.has(m)
     );
@@ -101,23 +103,25 @@ export function useScoreEngine() {
       setLiteracyScore(literacy, calcLiveScores().comprehension, calcLiveScores().engagement);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [progress]);
+  }, [progress, isFinalized]);
 
   // ── 퀴즈 결과 변경 → 현재 세션 마지막 포인트 실시간 갱신 ──────────
   useEffect(() => {
+    if (isFinalized) return;
     if (quizResults.length === 0) return;
     const { literacy } = calcLiveScores();
     updateLiveScore(literacy);
     // engagementScore도 최신값으로
     setLiteracyScore(literacy, calcLiveScores().comprehension, calcLiveScores().engagement);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quizResults]);
+  }, [quizResults, isFinalized]);
 
   // ── 집중도 변화 → engagementScore 실시간 반영 ──────────────────────
   useEffect(() => {
+    if (isFinalized) return;
     const { engagement, comprehension, literacy } = calcLiveScores();
     // engagementScore는 즉시 반영 (그래프는 마일스톤만)
     setLiteracyScore(literacy, comprehension, engagement);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusScore]);
+  }, [focusScore, isFinalized]);
 }

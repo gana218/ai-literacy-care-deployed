@@ -133,28 +133,52 @@ export interface SessionResultResponse {
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
 export const api = {
-  /** 세션 시작 — 기사 로드 및 WebSocket 엔드포인트 수신 */
+  /** 세션 시작 — 기사 로드 및 REST 엔드포인트 수신 */
   startSession: async (req: StartSessionRequest): Promise<StartSessionResponse> => {
     console.log('[API] startSession Request:', req);
-    try {
-      const res = await fetch(`${BASE_URL}/api/session/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(req),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return data;
+    const useMock = import.meta.env.VITE_USE_MOCK === 'true' || import.meta.env.VITE_USE_MOCK === true;
+    
+    if (!useMock) {
+      try {
+        const res = await fetch(`${BASE_URL}/api/session/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(req),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          // F2: 백엔드 실제 chunks/terms/difficultyScore 응답을 프론트 DTO로 안전 매핑
+          return {
+            sessionId: data.sessionId,
+            article: {
+              id: (data.article && data.article.id) || req.articleId || 'doc',
+              title: (data.article && data.article.title) || 'AI 리터러시 데모 아티클',
+              category: (data.article && data.article.category) || 'Technology',
+              author: (data.article && data.article.author) || 'AI Care System',
+              publishedAt: new Date().toISOString(),
+              content: (data.article && data.article.content) || [],
+              difficulty: data.article && data.article.difficulty
+                ? parseFloat(data.article.difficulty) / 100
+                : 0.5,
+            },
+            wsEndpoint: data.wsEndpoint || '',
+          };
+        }
+      } catch (err) {
+        console.error('[API] Failed to startSession from server:', err);
+        // mock fallback이 금지된 경우 에러 표출
+        if (import.meta.env.DEV) {
+          console.warn('[API] Real connection failed, throwing error to make it visible.');
+          throw err;
+        }
       }
-    } catch (err) {
-      console.error('[API] Failed to startSession from server, falling back to mock:', err);
     }
 
     // Fallback Mock 데이터 반환
     return {
       sessionId: `session-${Math.random().toString(36).substr(2, 9)}`,
       article: {
-        id: req.articleId,
+        id: req.articleId ?? 'doc',
         title: sampleArticle.title,
         category: sampleArticle.category,
         author: sampleArticle.author,
@@ -166,17 +190,44 @@ export const api = {
     };
   },
 
+  /** 실시간 읽기 행동 이벤트 REST 배치 전송 (F1) */
+  sendEvents: async (sessionId: string, events: any[]): Promise<any> => {
+    console.log('[API] sendEvents Request:', { sessionId, eventsCount: events.length });
+    const useMock = import.meta.env.VITE_USE_MOCK === 'true' || import.meta.env.VITE_USE_MOCK === true;
+    if (useMock) {
+      throw new Error('Forced Mock Mode by VITE_USE_MOCK');
+    }
+
+    const res = await fetch(`${BASE_URL}/api/session/${sessionId}/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, events }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data;
+    }
+    throw new Error(`Events server returned status ${res.status}`);
+  },
+
   /** 세션 결과 조회 — Literacy Score + Recharts 데이터 */
   getSessionResult: async (sessionId: string): Promise<SessionResultResponse> => {
     console.log('[API] getSessionResult Request:', sessionId);
-    try {
-      const res = await fetch(`${BASE_URL}/api/session/${sessionId}/result`);
-      if (res.ok) {
-        const data = await res.json();
-        return data;
+    const useMock = import.meta.env.VITE_USE_MOCK === 'true' || import.meta.env.VITE_USE_MOCK === true;
+
+    if (!useMock) {
+      try {
+        const res = await fetch(`${BASE_URL}/api/session/${sessionId}/result`);
+        if (res.ok) {
+          const data = await res.json();
+          return data;
+        }
+      } catch (err) {
+        console.error('[API] Failed to getSessionResult from server:', err);
+        if (import.meta.env.DEV) {
+          throw err;
+        }
       }
-    } catch (err) {
-      console.error('[API] Failed to getSessionResult from server, falling back to mock:', err);
     }
 
     // Fallback Mock 데이터 반환
@@ -207,18 +258,25 @@ export const api = {
   /** 퀴즈 정답 제출 */
   submitQuizAnswer: async (sessionId: string, quizId: string, selectedOption: string) => {
     console.log('[API] submitQuizAnswer Request:', { sessionId, quizId, selectedOption });
-    try {
-      const res = await fetch(`${BASE_URL}/api/session/${sessionId}/quiz/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quizId, selectedOption }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return data;
+    const useMock = import.meta.env.VITE_USE_MOCK === 'true' || import.meta.env.VITE_USE_MOCK === true;
+
+    if (!useMock) {
+      try {
+        const res = await fetch(`${BASE_URL}/api/session/${sessionId}/quiz/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quizId, selectedOption }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          return data;
+        }
+      } catch (err) {
+        console.error('[API] Failed to submitQuizAnswer to server:', err);
+        if (import.meta.env.DEV) {
+          throw err;
+        }
       }
-    } catch (err) {
-      console.error('[API] Failed to submitQuizAnswer to server, falling back to mock:', err);
     }
 
     return { correct: true, explanation: '정답입니다! (mock 서버 오프라인)' };

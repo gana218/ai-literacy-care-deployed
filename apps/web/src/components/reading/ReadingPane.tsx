@@ -17,13 +17,6 @@ import { sampleArticle } from '../../mock/sampleArticle';
 import { useReadingStore } from '../../stores/readingStore';
 import HighlightText from './HighlightText';
 import TermTooltip from './TermTooltip';
-import {
-  getActiveWsClient,
-  sendScrollEvent,
-  sendDwellEvent,
-  sendBlurEvent,
-  sendFocusEvent,
-} from '../../lib/ws';
 
 // ── 핵심 용어 사전 (6/30: ②번 RAG로 교체) ──────────────────────────
 const TERM_DICT: Record<string, string> = {
@@ -112,11 +105,13 @@ export const ReadingPane: React.FC = () => {
     sessionId,
     showGlossesInline,
     toggleGlossesInline,
+    enqueueEvent,
   } = useReadingStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const lastScrollY = useRef(0);
   const lastScrollTime = useRef(Date.now());
+  const lastWsSendTime = useRef(0); // WS 전송 스로틀용 쿨타임 ref
   const dwellStart = useRef(Date.now());
   const currentParagraph = useRef(0);
 
@@ -137,26 +132,39 @@ export const ReadingPane: React.FC = () => {
     const velocity = deltaT > 0 ? Math.round(deltaY / deltaT) : 0;
     setScrollVelocity(velocity);
 
-    // ── 7/6 WebSocket 전송 ──
-    const wsClient = getActiveWsClient();
-    if (wsClient && sessionId) {
-      sendScrollEvent(wsClient, sessionId, velocity, clampedProgress);
+    // ── 7/8 REST Events Queue 적재 (150ms 단위 스로틀링 적용) ──
+    if (sessionId && now - lastWsSendTime.current > 150) {
+      enqueueEvent({
+        type: 'scroll',
+        timestamp_ms: now,
+        position: clampedProgress / 100,
+        payload: { scrollVelocity: velocity }
+      });
+      lastWsSendTime.current = now;
     }
 
     lastScrollY.current = scrollTop;
     lastScrollTime.current = now;
-  }, [setProgress, setScrollVelocity, sessionId]);
+  }, [setProgress, setScrollVelocity, sessionId, enqueueEvent]);
 
   // ── 탭 포커스 이탈 감지 ──
   useEffect(() => {
     const onBlur = () => {
       incrementGazeOut();
-      const wsClient = getActiveWsClient();
-      if (wsClient && sessionId) sendBlurEvent(wsClient, sessionId);
+      if (sessionId) {
+        enqueueEvent({
+          type: 'blur',
+          timestamp_ms: Date.now()
+        });
+      }
     };
     const onFocus = () => {
-      const wsClient = getActiveWsClient();
-      if (wsClient && sessionId) sendFocusEvent(wsClient, sessionId);
+      if (sessionId) {
+        enqueueEvent({
+          type: 'focus',
+          timestamp_ms: Date.now()
+        });
+      }
     };
     window.addEventListener('blur', onBlur);
     window.addEventListener('focus', onFocus);
@@ -173,17 +181,24 @@ export const ReadingPane: React.FC = () => {
         const elapsed = Date.now() - dwellStart.current;
         setDwellTime(elapsed);
 
-        // ── 7/6 WebSocket 전송 ──
-        const wsClient = getActiveWsClient();
-        if (wsClient && sessionId) {
-          sendDwellEvent(wsClient, sessionId, String(currentParagraph.current), elapsed);
+        // ── 7/8 REST Events Queue 적재 ──
+        if (sessionId) {
+          enqueueEvent({
+            type: 'dwell',
+            timestamp_ms: Date.now(),
+            duration_ms: elapsed,
+            payload: {
+              paragraphId: String(currentParagraph.current),
+              dwellMs: elapsed
+            }
+          });
         }
 
         dwellStart.current = Date.now();
         currentParagraph.current = index;
       }
     },
-    [setDwellTime, sessionId]
+    [setDwellTime, sessionId, enqueueEvent]
   );
 
   return (

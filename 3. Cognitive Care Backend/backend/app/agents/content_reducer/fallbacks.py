@@ -11,7 +11,7 @@ fallbacks.py — 서브모듈 실패 시 기본값 처리 (M0)
 """
 from __future__ import annotations
 
-from backend.app.agents.content_reducer.contracts import ChunkDict, QuizDict, TermDict
+from app.agents.content_reducer.contracts import ChunkDict, QuizDict, TermDict
 
 
 # ---------------------------------------------------------------------------

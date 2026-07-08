@@ -385,6 +385,14 @@ function FocusSimulator() {
     dismissNudge();
     dismissQuiz();
     restartDemoSession();
+
+    // 7/13, 7/14: 백엔드 리셋 API 연동 트리거 (E2E 리허설 반복용)
+    const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+    fetch(`${BASE_URL}/api/session/reset`, { method: 'POST' })
+      .then((res) => {
+        if (res.ok) console.log('[Simulator] Backend reset successful.');
+      })
+      .catch((err) => console.error('[Simulator] Failed to reset backend data:', err));
   };
 
   const proceedToStep5 = () => {

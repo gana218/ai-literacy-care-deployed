@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from backend.app.orchestrator.state import ReadingSessionState
+from app.orchestrator.state import ReadingSessionState
 
 # --- 내 intervention.type → 프론트 InterventionType 매핑 ---
 # 내부: none/highlight/nudge/quiz  →  프론트: nudge/quiz/highlight/score_update/session_end

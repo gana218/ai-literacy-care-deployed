@@ -211,3 +211,28 @@ def test_disambiguate_homonyms_with_llm():
         assert best["sense"]["definition"] == "주인집. 또는 주인의 집."
 
 
+def test_extract_definition_from_item_list_and_dict():
+    """_extract_definition_from_item 함수가 list 형태와 dict 형태의 sense를 모두 잘 처리하는지 검증."""
+    from backend.app.agents.content_reducer.rag_engine import _extract_definition_from_item
+    
+    # 1. list 구조인 경우
+    item_list = {
+        "word": "테스트",
+        "sense": [
+            {"definition": "리스트 형태 정의입니다."}
+        ]
+    }
+    assert _extract_definition_from_item(item_list) == "리스트 형태 정의입니다."
+    
+    # 2. dict 구조인 경우
+    item_dict = {
+        "word": "테스트",
+        "sense": {"definition": "딕셔너리 형태 정의입니다."}
+    }
+    assert _extract_definition_from_item(item_dict) == "딕셔너리 형태 정의입니다."
+    
+    # 3. 비어있는 경우
+    assert _extract_definition_from_item({}) == ""
+
+
+

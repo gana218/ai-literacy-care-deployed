@@ -27,7 +27,7 @@ import os
 import re
 from pathlib import Path
 
-from backend.app.agents.content_reducer.contracts import ChunkDict, TermDict
+from app.agents.content_reducer.contracts import ChunkDict, TermDict
 
 # ---------------------------------------------------------------------------
 # 설정
@@ -463,7 +463,7 @@ def _disambiguate_homonyms_with_llm(word: str, items: list, context: str) -> dic
     """
     여러 개의 사전 정의 후보(동음이의어) 중 주어진 문맥에 가장 적합한 정의를 LLM으로 선택한다.
     """
-    from backend.app.agents.content_reducer.snowchat_client import is_snowchat_available, _call_llm_via_snowchat
+    from app.agents.content_reducer.snowchat_client import is_snowchat_available, _call_llm_via_snowchat
     if not is_snowchat_available():
         return items[0]
 
@@ -593,7 +593,7 @@ def _clean_korean_josa(word: str) -> str:
                 
     return word
 
-from backend.app.agents.content_reducer.snowchat_client import is_snowchat_available, _call_llm_via_snowchat
+from app.agents.content_reducer.snowchat_client import is_snowchat_available, _call_llm_via_snowchat
 
 def _query_llm_definition(word: str, context: str | None = None) -> str | None:
     """

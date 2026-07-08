@@ -209,7 +209,7 @@ export const TermTooltip: React.FC<TermTooltipProps> = ({
               📖 AI 리터러시 케어 용어 사전
             </span>
             {/* 말꼬리 화살표 */}
-            <div
+            <span
               style={{
                 position: 'absolute',
                 left: '50%',
@@ -222,6 +222,7 @@ export const TermTooltip: React.FC<TermTooltipProps> = ({
                 borderTop: placement === 'bottom' ? '1px solid var(--color-border)' : 'none',
                 bottom: placement === 'top' ? '-5px' : 'auto',
                 top: placement === 'bottom' ? '-5px' : 'auto',
+                display: 'block',
               }}
             />
           </motion.span>

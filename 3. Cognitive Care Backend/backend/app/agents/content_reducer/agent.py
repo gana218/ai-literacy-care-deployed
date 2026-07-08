@@ -19,26 +19,26 @@ import os
 import time
 from typing import TYPE_CHECKING
 
-from backend.app.agents.content_reducer.chunker import semantic_chunk
-from backend.app.agents.content_reducer.fallbacks import (
+from app.agents.content_reducer.chunker import semantic_chunk
+from app.agents.content_reducer.fallbacks import (
     fallback_chunks,
     fallback_content_reducer_response,
     fallback_readability,
 )
-from backend.app.agents.content_reducer.rag_engine import (
+from app.agents.content_reducer.rag_engine import (
     collect_all_terms,
     get_faithfulness_summary,
     inject_rag_terms,
 )
-from backend.app.agents.content_reducer.readability import (
+from app.agents.content_reducer.readability import (
     analyze_readability,
     calculate_difficulty_score,
     get_readability_label,
 )
-from backend.app.agents.content_reducer.restructurer import restructure_text
+from app.agents.content_reducer.restructurer import restructure_text
 
 if TYPE_CHECKING:
-    from backend.app.agents.content_reducer.contracts import ReadingSessionState
+    from app.agents.content_reducer.contracts import ReadingSessionState
 
 # 모드 평가는 실행 시 동적으로 처리하도록 변경함
 
@@ -84,7 +84,7 @@ def run_content_reducer(state: "ReadingSessionState") -> "ReadingSessionState":
     # Stub 모드: 전체를 stub으로 위임
     mode = os.getenv("CONTENT_REDUCER_MODE", "real").lower()
     if mode == "stub":
-        from backend.app.agents.stubs.content_reducer_stub import (
+        from app.agents.stubs.content_reducer_stub import (
             content_reducer_stub,
         )
         return content_reducer_stub(state)

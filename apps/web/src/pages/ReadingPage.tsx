@@ -10,8 +10,6 @@ import { useScoreEngine } from '../lib/useScoreEngine';
 import { useFocusStore } from '../stores/focusStore';
 import { useScoreStore } from '../stores/scoreStore';
 import { api } from '../lib/api';
-import { createWsClient, setActiveWsClient } from '../lib/ws';
-import type { WsClient } from '../lib/ws';
 
 /**
  * ReadingPage — /reading
@@ -31,6 +29,8 @@ export default function ReadingPage() {
   const showQuiz = useFocusStore((s) => s.showQuiz);
   const setFocusScore = useFocusStore((s) => s.setFocusScore);
 
+  const clearQueue = useReadingStore((s) => s.clearQueue);
+
   // 6/26: Score Engine 마운트 (ReadingPage 수명 동안 실행)
   useScoreEngine();
 
@@ -38,10 +38,98 @@ export default function ReadingPage() {
     document.title = 'AI 리터러시 케어 — 읽기';
   }, []);
 
-  // 7/6: 실시간 백엔드 연결 & WebSocket 개입 커맨드 처리
+  // 7/8: 실시간 REST /events 배치 폴링 & 개입 커맨드 처리 (WebSocket 제거)
   useEffect(() => {
-    let ws: WsClient | null = null;
     let active = true;
+    let flushIntervalId: any = null;
+    let currentSessionId: string | null = null;
+
+    // 개입 명령 처리 핸들러 (Intervention Command → UI)
+    const handleInterventionCommand = (command: any) => {
+      if (!command) return;
+      console.log('[ReadingPage] ← Received REST Intervention Command:', command);
+      switch (command.type) {
+        case 'nudge':
+          if (command.payload.nudgeLevel) {
+            showNudge(command.payload.nudgeLevel, command.payload.nudgeMessage);
+          }
+          break;
+        case 'quiz':
+          if (command.payload.quiz) {
+            setActiveQuiz(command.payload.quiz);
+            showQuiz();
+          }
+          break;
+        case 'highlight':
+          if (command.payload.highlights) {
+            const indices = command.payload.highlights.map((h: any) => h.paragraphIndex);
+            setHighlights(indices);
+          }
+          break;
+        case 'score_update':
+          if (command.payload.focusScore !== undefined) {
+            setFocusScore(command.payload.focusScore);
+          }
+          if (command.payload.progress !== undefined) {
+            setProgress(command.payload.progress);
+          }
+          break;
+        case 'session_end':
+          if (currentSessionId) {
+            api.getSessionResult(currentSessionId)
+              .then((scoreResult) => {
+                if (!active) return;
+                useScoreStore.setState({
+                  isFinalized: true,
+                  literacyScore: scoreResult.literacyScore,
+                  comprehensionScore: scoreResult.comprehensionScore,
+                  engagementScore: scoreResult.engagementScore,
+                  xp: scoreResult.totalXp,
+                  level: scoreResult.level,
+                  scoreSeries: scoreResult.scoreSeries.map((s) => ({
+                    label: s.label,
+                    before: s.before,
+                    after: s.after,
+                  })),
+                  badges: scoreResult.badges.map((b) => ({
+                    id: b.id,
+                    name: b.name,
+                    emoji: b.emoji,
+                    description: b.description,
+                    acquiredAt: b.acquiredAt,
+                  })),
+                });
+              })
+              .catch((err) => {
+                console.error('[ReadingPage] Failed to fetch session result:', err);
+              });
+          }
+          setProgress(100);
+          break;
+        default:
+          console.warn('[ReadingPage] Unknown command type:', command.type);
+      }
+    };
+
+    // 큐에 있는 이벤트를 서버로 Flush 전송
+    const flushQueue = async () => {
+      // 컴포넌트 마운트 해제 또는 세션 ID가 없을 경우 전송하지 않음
+      const currentQueue = useReadingStore.getState().eventQueue;
+      if (!active || !currentSessionId || currentQueue.length === 0) return;
+
+      // 큐 선점 비우기
+      const eventsToSend = [...currentQueue];
+      clearQueue();
+
+      try {
+        const cmd = await api.sendEvents(currentSessionId, eventsToSend);
+        if (active) {
+          handleInterventionCommand(cmd);
+        }
+      } catch (err) {
+        console.warn('[ReadingPage] Failed to send events:', err);
+      }
+    };
 
     async function initSession() {
       try {
@@ -52,10 +140,11 @@ export default function ReadingPage() {
 
         if (!active) return;
 
+        currentSessionId = sessionData.sessionId;
         // Zustand store 세션 연동 시작
         startSessionStore(sessionData.article.id, sessionData.sessionId);
 
-        // 7/5 추가: 본문 속 핵심 단어들의 AI RAG 설명을 백그라운드에서 사전 프리페치(Prefetch)하여 hover 시 딜레이 없이 뜨게 함
+        // 7/5 추가: AI RAG 설명 사전 프리페치
         const termsToPrefetch = [
           '디지털 리터러시',
           'LLM',
@@ -77,85 +166,34 @@ export default function ReadingPage() {
             });
         });
 
-        // WebSocket 클라이언트 생성 및 활성화
-        ws = createWsClient(sessionData.wsEndpoint);
-
-        ws.onMessage((command) => {
-          console.log('[ReadingPage] ← Received Intervention Command:', command);
-          switch (command.type) {
-            case 'nudge':
-              if (command.payload.nudgeLevel) {
-                showNudge(command.payload.nudgeLevel, command.payload.nudgeMessage);
-              }
-              break;
-            case 'quiz':
-              if (command.payload.quiz) {
-                setActiveQuiz(command.payload.quiz);
-                showQuiz();
-              }
-              break;
-            case 'highlight':
-              if (command.payload.highlights) {
-                const indices = command.payload.highlights.map((h: any) => h.paragraphIndex);
-                setHighlights(indices);
-              }
-              break;
-            case 'score_update':
-              if (command.payload.focusScore !== undefined) {
-                setFocusScore(command.payload.focusScore);
-              }
-              if (command.payload.progress !== undefined) {
-                setProgress(command.payload.progress);
-              }
-              break;
-            case 'session_end':
-              // 최종 리터러시 결과 조회 및 scoreStore 동기화
-              api.getSessionResult(sessionData.sessionId)
-                .then((scoreResult) => {
-                  if (!active) return;
-                  useScoreStore.setState({
-                    literacyScore: scoreResult.literacyScore,
-                    comprehensionScore: scoreResult.comprehensionScore,
-                    engagementScore: scoreResult.engagementScore,
-                    xp: scoreResult.totalXp,
-                    level: scoreResult.level,
-                    scoreSeries: scoreResult.scoreSeries.map((s) => ({
-                      label: s.label,
-                      before: s.before,
-                      after: s.after,
-                    })),
-                    badges: scoreResult.badges.map((b) => ({
-                      id: b.id,
-                      name: b.name,
-                      emoji: b.emoji,
-                      description: b.description,
-                      acquiredAt: b.acquiredAt,
-                    })),
-                  });
-                })
-                .catch((err) => {
-                  console.error('[ReadingPage] Failed to fetch session result:', err);
-                });
-              // 완독 완료 설정
-              setProgress(100);
-              break;
-            default:
-              console.warn('[ReadingPage] Unknown command type:', command.type);
-          }
-        });
+        // 1.5초(1500ms) 주기적 배치 Flush 루프 시작
+        flushIntervalId = setInterval(flushQueue, 1500);
       } catch (err) {
-        console.error('[ReadingPage] Failed to initialize session APIs:', err);
+        console.error('[ReadingPage] Failed to initialize session REST APIs:', err);
       }
     }
 
     initSession();
 
+    // 큐 변경 실시간 감시 (blur 또는 dwell 이입 시 즉시 flush)
+    const unsubscribeQueue = useReadingStore.subscribe((state) => {
+      const queue = state.eventQueue;
+      if (queue.length > 0) {
+        const lastEvent = queue[queue.length - 1];
+        if (lastEvent.type === 'blur' || lastEvent.type === 'dwell') {
+          flushQueue();
+        }
+      }
+    });
+
     return () => {
       active = false;
-      if (ws) {
-        ws.close();
+      if (flushIntervalId) {
+        clearInterval(flushIntervalId);
       }
-      setActiveWsClient(null);
+      unsubscribeQueue();
+      // 마지막 남은 잔여 이벤트 전송 시도
+      flushQueue();
     };
   }, [
     startSessionStore,
@@ -165,6 +203,7 @@ export default function ReadingPage() {
     setHighlights,
     setFocusScore,
     setProgress,
+    clearQueue,
   ]);
 
   const isFinished = progress >= 100;

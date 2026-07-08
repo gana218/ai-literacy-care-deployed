@@ -25,12 +25,12 @@ import re
 import time
 from pathlib import Path
 
-from backend.app.agents.content_reducer.contracts import ChunkDict
-from backend.app.agents.content_reducer.prompts import (
+from app.agents.content_reducer.contracts import ChunkDict
+from app.agents.content_reducer.prompts import (
     RESTRUCTURE_SYSTEM_PROMPT,
     build_restructure_prompt,
 )
-from backend.app.agents.content_reducer.router import get_routing_reason, select_model
+from app.agents.content_reducer.router import get_routing_reason, select_model
 
 # ---------------------------------------------------------------------------
 # 환경 설정

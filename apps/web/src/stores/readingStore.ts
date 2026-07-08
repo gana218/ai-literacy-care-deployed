@@ -33,6 +33,12 @@ interface ReadingState {
   setTermDefinition: (term: string, definition: string) => void;
   setTermDefinitions: (definitions: Record<string, string>) => void;
   toggleGlossesInline: () => void;
+  
+  // REST 배치 이벤트 전송용 큐 상태 및 액션 (7/8 추가)
+  eventQueue: any[];
+  enqueueEvent: (event: any) => void;
+  clearQueue: () => void;
+  
   reset: () => void;
 }
 
@@ -48,9 +54,10 @@ export const useReadingStore = create<ReadingState>((set) => ({
   highlightedParagraphs: [0, 2], // 0번·2번 단락 하이라이트 (mock)
   termDefinitions: {},
   showGlossesInline: false,
+  eventQueue: [],
 
   startSession: (articleId, sessionId) =>
-    set({ currentArticleId: articleId, sessionId, readingStartedAt: Date.now(), progress: 0 }),
+    set({ currentArticleId: articleId, sessionId, readingStartedAt: Date.now(), progress: 0, eventQueue: [] }),
   setProgress: (progress) => set({ progress }),
   setScrollVelocity: (scrollVelocity) => set({ scrollVelocity }),
   setDwellTime: (dwellTimeMs) => set({ dwellTimeMs }),
@@ -60,6 +67,10 @@ export const useReadingStore = create<ReadingState>((set) => ({
     set((s) => ({ termDefinitions: { ...s.termDefinitions, [term]: definition } })),
   setTermDefinitions: (termDefinitions) => set({ termDefinitions }),
   toggleGlossesInline: () => set((s) => ({ showGlossesInline: !s.showGlossesInline })),
+  
+  enqueueEvent: (event) => set((s) => ({ eventQueue: [...s.eventQueue, event] })),
+  clearQueue: () => set({ eventQueue: [] }),
+  
   reset: () =>
     set({
       currentArticleId: null,
@@ -72,5 +83,6 @@ export const useReadingStore = create<ReadingState>((set) => ({
       highlightedParagraphs: [],
       termDefinitions: {},
       showGlossesInline: false,
+      eventQueue: [],
     }),
 }));
