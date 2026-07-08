@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from backend.app.agents.config import run_agent
+from backend.app.agents.config import impl_mode, run_agent
 from backend.app.agents.content_reducer.agent import (
     run_content_reducer as _content_reducer_real,
 )
@@ -20,4 +20,12 @@ _REAL_IMPL = _content_reducer_real
 
 def run_content_reducer(state: ReadingSessionState) -> ReadingSessionState:
     """Run the configured Content Reducer implementation."""
-    return run_agent("content_reducer", state, stub=content_reducer_stub, real=_REAL_IMPL)
+    state = run_agent("content_reducer", state, stub=content_reducer_stub, real=_REAL_IMPL)
+    # 2번 real은 자체 trace 항목(step="content_reducer")을 남긴다. graph._run_step도
+    # 스텝 trace를 남기므로 이름이 겹쳐 "content_reducer"가 2번 찍힌다. 2번의 상세
+    # 항목을 "content_reducer_detail"로 강등해 graph의 스텝 trace와 구분한다(정보는 보존).
+    if impl_mode("content_reducer") == "real":
+        trace = state.get("trace") or []
+        if trace and trace[-1].get("step") == "content_reducer":
+            trace[-1]["step"] = "content_reducer_detail"
+    return state
