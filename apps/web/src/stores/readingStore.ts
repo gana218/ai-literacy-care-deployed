@@ -4,7 +4,7 @@
  * 6/23: 스크롤 감지 훅에서 setProgress / setScrollVelocity 호출
  */
 import { create } from 'zustand';
-import { sampleArticle } from '../mock/sampleArticle';
+import { sampleArticle, type Article } from '../mock/sampleArticle';
 
 interface ReadingState {
   // 세션 정보
@@ -22,9 +22,11 @@ interface ReadingState {
   highlightedParagraphs: number[]; // 하이라이트할 단락 인덱스 배열
   termDefinitions: Record<string, string>; // AI RAG 용어 사전 캐시 (7/5 추가)
   showGlossesInline: boolean; // RAG AI 주석 본문 상시 표시 모드 (7/5 추가)
+  article: Article; // 현재 렌더 중인 글 (care=데모 mock, upload=사용자 문서)
 
   // actions
   startSession: (articleId: string, sessionId: string) => void;
+  setArticle: (article: Article) => void;
   setProgress: (progress: number) => void;
   setScrollVelocity: (velocity: number) => void;
   setDwellTime: (ms: number) => void;
@@ -52,12 +54,14 @@ export const useReadingStore = create<ReadingState>((set) => ({
   gazeOutCount: 0,
   readingStartedAt: null,
   highlightedParagraphs: [0, 2], // 0번·2번 단락 하이라이트 (mock)
+  article: sampleArticle,
   termDefinitions: {},
   showGlossesInline: false,
   eventQueue: [],
 
   startSession: (articleId, sessionId) =>
     set({ currentArticleId: articleId, sessionId, readingStartedAt: Date.now(), progress: 0, eventQueue: [] }),
+  setArticle: (article) => set({ article }),
   setProgress: (progress) => set({ progress }),
   setScrollVelocity: (scrollVelocity) => set({ scrollVelocity }),
   setDwellTime: (dwellTimeMs) => set({ dwellTimeMs }),

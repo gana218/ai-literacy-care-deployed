@@ -13,7 +13,6 @@
  * TODO 6/30: ②번 RAG 용어 정의 API 연결
  */
 import React, { useEffect, useRef, useCallback } from 'react';
-import { sampleArticle } from '../../mock/sampleArticle';
 import { useReadingStore } from '../../stores/readingStore';
 import HighlightText from './HighlightText';
 import TermTooltip from './TermTooltip';
@@ -106,6 +105,7 @@ export const ReadingPane: React.FC = () => {
     showGlossesInline,
     toggleGlossesInline,
     enqueueEvent,
+    article,
   } = useReadingStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -227,7 +227,7 @@ export const ReadingPane: React.FC = () => {
               marginBottom: 'var(--space-2)',
             }}
           >
-            {sampleArticle.category}
+            {article.category}
           </span>
           <h1
             style={{
@@ -240,7 +240,7 @@ export const ReadingPane: React.FC = () => {
               marginBottom: 'var(--space-2)',
             }}
           >
-            {sampleArticle.title}
+            {article.title}
           </h1>
           <div
             style={{
@@ -259,7 +259,7 @@ export const ReadingPane: React.FC = () => {
                 margin: 0,
               }}
             >
-              저자: {sampleArticle.author} · 발행일: {sampleArticle.publishedAt}
+              저자: {article.author} · 발행일: {article.publishedAt}
             </p>
             <button
               onClick={toggleGlossesInline}
@@ -321,7 +321,7 @@ export const ReadingPane: React.FC = () => {
             letterSpacing: 'var(--tracking-kr)',
           }}
         >
-          {sampleArticle.content.map((paragraph, index) => (
+          {article.content.map((paragraph, index) => (
             <Paragraph
               key={index}
               index={index}

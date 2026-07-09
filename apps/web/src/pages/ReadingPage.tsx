@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useSessionConfig } from '../stores/sessionConfigStore';
 import ReadingPane from '../components/reading/ReadingPane';
 import FloatingControlPanel from '../components/panel/FloatingControlPanel';
 import NudgeController from '../components/nudge/NudgeController';
@@ -33,6 +34,15 @@ export default function ReadingPage() {
 
   // 6/26: Score Engine 마운트 (ReadingPage 수명 동안 실행)
   useScoreEngine();
+
+  const navigate = useNavigate();
+
+  // 온보딩(익명 로그인+동의) 미완료 시 진입 차단
+  useEffect(() => {
+    if (!useSessionConfig.getState().consentGiven) {
+      navigate('/onboarding', { replace: true });
+    }
+  }, [navigate]);
 
   useEffect(() => {
     document.title = 'AI 리터러시 케어 — 읽기';
@@ -133,9 +143,13 @@ export default function ReadingPage() {
 
     async function initSession() {
       try {
+        const cfg = useSessionConfig.getState();
+        const isUpload =
+          cfg.mode === 'upload' && !!cfg.uploadedContent && cfg.uploadedContent.length > 0;
         const sessionData = await api.startSession({
-          articleId: 'default-article',
-          userId: 'user-001',
+          articleId: isUpload ? 'uploaded' : 'default-article',
+          userId: cfg.userId ?? 'u_anon_guest',
+          content: isUpload ? cfg.uploadedContent! : undefined,
         });
 
         if (!active) return;

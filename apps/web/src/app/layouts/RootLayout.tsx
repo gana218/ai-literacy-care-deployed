@@ -72,6 +72,26 @@ export default function RootLayout() {
             >
               📊 성장 대시보드
             </NavLink>
+            <NavLink
+              to="/profile"
+              className={({ isActive }) =>
+                `px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-primary-tint text-primary'
+                    : 'text-text-secondary hover:text-text hover:bg-surface-alt'
+                }`
+              }
+              style={{ fontFamily: 'var(--font-sans)' } as React.CSSProperties}
+            >
+              🕶️ 내 프로필
+            </NavLink>
+            <NavLink
+              to="/home"
+              className="px-3 py-1.5 rounded-md text-sm font-medium transition-colors text-text-secondary hover:text-text hover:bg-surface-alt"
+              style={{ fontFamily: 'var(--font-sans)' } as React.CSSProperties}
+            >
+              ＋ 새 세션
+            </NavLink>
           </nav>
 
           {/* 헤더 우측 실시간 상태 표시 (읽기 중일 때만) */}

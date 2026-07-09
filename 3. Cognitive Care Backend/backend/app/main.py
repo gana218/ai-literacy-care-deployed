@@ -22,12 +22,20 @@ if sys.platform == "win32":
 
 from fastapi import FastAPI, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
 from .api import ws, endpoints, extension_session, terms, users
 from .core.db import engine, Base
 from .models import models
+
+# 단일 호스트 배포용: 빌드된 프론트엔드(dist) 위치
+# main.py = <backend_root>/backend/app/main.py → 상위 3단계가 프로젝트 폴더
+_FRONTEND_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "frontend_dist",
+)
 
 
 @asynccontextmanager
@@ -115,6 +123,10 @@ app.include_router(users.router)
 
 @app.get("/")
 async def root():
+    # 프론트가 번들돼 있으면 SPA 진입점(index.html)을, 아니면 상태 JSON을 반환
+    index_path = os.path.join(_FRONTEND_DIR, "index.html")
+    if os.path.isfile(index_path):
+        return FileResponse(index_path)
     return {"message": "AI Literacy Care Backend is running!", "version": "1.0.0"}
 
 
@@ -139,5 +151,28 @@ async def health_check():
         await redis_client.aclose()
     except Exception as e:
         health["redis"] = f"error: {str(e)[:50]}"
-    
+
     return health
+
+
+# ==============================
+# 프론트엔드 정적 서빙 (단일 호스트 배포)
+# ==============================
+if os.path.isdir(_FRONTEND_DIR):
+    _assets_dir = os.path.join(_FRONTEND_DIR, "assets")
+    if os.path.isdir(_assets_dir):
+        app.mount("/assets", StaticFiles(directory=_assets_dir), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def spa_fallback(full_path: str):
+        """API/WS를 제외한 모든 경로는 SPA index.html로 폴백(클라이언트 라우팅)."""
+        if full_path.startswith(("api/", "ws/")):
+            return JSONResponse(status_code=404, content={"error": "Not Found", "path": "/" + full_path})
+        candidate = os.path.join(_FRONTEND_DIR, full_path)
+        if full_path and os.path.isfile(candidate):
+            return FileResponse(candidate)
+        return FileResponse(os.path.join(_FRONTEND_DIR, "index.html"))
+
+    print(f"[Startup] Serving frontend from {_FRONTEND_DIR}")
+else:
+    print(f"[Startup] Frontend dist not found at {_FRONTEND_DIR} (API-only mode)")

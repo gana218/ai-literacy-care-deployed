@@ -37,3 +37,6 @@ __pycache__/
 literacy_care.db
 
 
+
+# 단일 호스트 배포용 프론트 빌드 산출물 (CI/Docker에서 생성)
+3. Cognitive Care Backend/frontend_dist/
