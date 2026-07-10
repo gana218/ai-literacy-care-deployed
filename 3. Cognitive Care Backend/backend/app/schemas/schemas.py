@@ -9,6 +9,7 @@ class SessionStartRequest(BaseModel):
     articleId: Optional[str] = None
     content: Optional[list[str]] = None
     source: Optional[dict] = None
+    baselineScrollSpeed: Optional[float] = None
 
 
 class SessionStartResponse(BaseModel):

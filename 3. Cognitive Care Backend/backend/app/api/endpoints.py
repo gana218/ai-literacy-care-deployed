@@ -49,6 +49,10 @@ async def start_session(req: SessionStartRequest, request: Request, background_t
     db.add(new_session)
     await db.commit()
     
+    if req.baselineScrollSpeed is not None:
+        redis_client = await get_redis()
+        await redis_client.set(f"session:{session_id}:baseline_speed", str(req.baselineScrollSpeed), ex=86400)
+
     host = request.headers.get("host", "localhost:8000")
     ws_endpoint = f"ws://{host}/ws/reading/{session_id}"
     
@@ -119,7 +123,11 @@ async def process_events(session_id: str, req: EventsRequestModel):
             "metadata": data
         })
 
-    focus_score = calculate_focus_score(reading_events)
+    # 로컬 저장된 baseline_speed 가져오기
+    baseline_speed_raw = await redis_client.get(f"session:{session_id}:baseline_speed")
+    baseline_speed = float(baseline_speed_raw) if baseline_speed_raw else None
+
+    focus_score = calculate_focus_score(reading_events, baseline_speed)
     intervention_needed, intervention_level, msg = determine_intervention(focus_score)
     
     level_to_type = {"none": "none", "soft": "highlight", "medium": "nudge", "hard": "quiz"}

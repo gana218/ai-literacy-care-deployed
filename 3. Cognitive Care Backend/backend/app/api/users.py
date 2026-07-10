@@ -63,10 +63,15 @@ async def get_user_growth(user_id: str, db: AsyncSession = Depends(get_db)):
                 {"label": '일', "time": 42, "xp": 380},
             ],
             "words": [
-                {"word": '기각 (Dismissal)', "meaning": '소송이나 신청이 법적 요건을 갖추지 못했거나 이유가 없다고 돌려보내는 일.', "level": '상', "status": 'completed'},
-                {"word": '양형 (Sentencing)', "meaning": '재판관이 형벌의 정도를 결정하는 일.', "level": '중', "status": 'completed'},
-                {"word": '귀책사유 (Imputable Reason)', "meaning": '법적 책임을 지울 수 있는 원인이나 과실.', "level": '상', "status": 'review'},
-                {"word": '인과관계 (Causality)', "meaning": '원인과 결과 사이의 관계.', "level": '하', "status": 'completed'},
+                {"word": '인공지능 전환 (AX)', "meaning": 'AI 기술을 도입해 기존의 비즈니스 구조를 근본적으로 바꾸는 과정.', "level": '상', "status": 'completed'},
+                {"word": '녹색 전환 (GX)', "meaning": '친환경적이고 지속 가능한 비즈니스 모델로의 변화.', "level": '중', "status": 'completed'},
+                {"word": '카나리아 (Canary)', "meaning": '탄광의 새처럼 위험을 미리 알려주는 조기 경보 체계나 지표.', "level": '상', "status": 'review'},
+                {"word": '리터러시 (Literacy)', "meaning": '글이나 정보를 읽고 비판적으로 이해하는 능력.', "level": '하', "status": 'completed'},
+            ],
+            "prescription": [
+                "학습자의 이번 주 총 집중 독해 시간은 <strong class=\"text-[var(--color-primary)]\">164분</strong>으로, 지난주 대비 약 <strong>28% 증가</strong>했습니다.",
+                "특히 'AI 기술과 일자리 변화' 같은 난도 높은 비문학 단락을 읽을 때 평균 체류(Dwell) 시간이 길어졌으나, 실시간으로 개입한 <strong class=\"text-[var(--color-nudge-soft)]\">Soft Nudge 용어 해설</strong>과 <strong class=\"text-[var(--color-nudge-medium)]\">간이 퀴즈</strong>를 거치며 독해 밸런스를 맞췄습니다. 결과적으로 <strong>어휘 능력 지표가 22점 상승</strong>하는 매우 긍정적인 성과를 냈습니다.",
+                "<strong>💡 성장 챌린지:</strong> 다음 주에는 LLM, RAG 등 더 깊은 기술 원리를 다루는 지문에 도전해보세요. 단락 구조 파악(Structural scanning) 훈련을 병행하면 추론 속도가 더 빨라질 것입니다."
             ]
         },
         "monthly": {
@@ -84,10 +89,15 @@ async def get_user_growth(user_id: str, db: AsyncSession = Depends(get_db)):
                 {"label": '4주차', "time": 145, "xp": 1350},
             ],
             "words": [
-                {"word": '개정 (Revision)', "meaning": '이미 정하였던 법령이나 규칙 따위를 고쳐서 다시 정함.', "level": '하', "status": 'completed'},
-                {"word": '지적재산권 (IP)', "meaning": '인간의 지적 창작물에 대해 법이 부여한 권리.', "level": '중', "status": 'completed'},
-                {"word": '추상적 (Abstract)', "meaning": '구체적이지 않고 일반적이거나 관념적인 것.', "level": '하', "status": 'completed'},
-                {"word": '기속력 (Binding Force)', "meaning": '법원이나 행정기관이 스스로 내린 결정에 구속되는 효력.', "level": '상', "status": 'review'},
+                {"word": '대규모 언어 모델 (LLM)', "meaning": '방대한 텍스트 데이터를 학습하여 사람의 언어를 이해하고 생성하는 AI 모델.', "level": '중', "status": 'completed'},
+                {"word": '환각 현상 (Hallucination)', "meaning": '인공지능이 사실이 아닌 거짓 정보를 진짜처럼 생성하는 현상.', "level": '상', "status": 'completed'},
+                {"word": '메타인지 (Metacognition)', "meaning": '자신의 인지 과정을 스스로 파악하고 제어하는 상위 수준의 사고 능력.', "level": '상', "status": 'review'},
+                {"word": '가독성 (Readability)', "meaning": '글이 읽히는 쉽고 명확한 정도.', "level": '하', "status": 'completed'},
+            ],
+            "prescription": [
+                "지난 4주간 총 <strong class=\"text-[var(--color-primary)]\">425분</strong>의 독해 세션을 성공적으로 수행하였으며, 총 <strong class=\"text-[var(--color-xp)]\">3,870 XP</strong>를 누적 획득하여 성장 속도가 가속화되고 있습니다.",
+                "지속적인 폐루프 넛지 인터랙션을 거치면서, <strong>\"쉬운 문장으로 변환하여 읽기\"</strong>에 의존하는 비율이 <strong>초기 65%에서 15% 미만</strong>으로 극적으로 줄어들었습니다. 이는 보조 도구 없이 원문 자체를 소화할 수 있는 내재적 문해 체력이 형성되었음을 시각적으로 증명합니다.",
+                "<strong>💡 성장 챌린지:</strong> 현재 리터러시 레벨은 실버 최상위 구간입니다. 집중력 유지를 위해 넛지 개입 빈도를 한 단계 낮춘 '자율 심화 모드'를 적용할 것을 권장합니다."
             ]
         }
     }

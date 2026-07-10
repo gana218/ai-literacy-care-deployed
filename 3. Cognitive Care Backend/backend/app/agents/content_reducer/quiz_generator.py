@@ -2,7 +2,7 @@
 quiz_generator.py — 문맥 맞춤형 퀴즈 생성기 (M2)
 
 집중도 저하 등의 개입 상황이 발생했을 때,
-사용자가 읽은 청크의 텍스트(context)를 기반으로 내용 이해도를 평가하는 4지선다 퀴즈를 생성한다.
+사용자가 읽은 청크의 텍스트(context)를 기반으로 내용 이해도를 평가하는 O/X(참/거짓) 퀴즈를 생성한다.
 
 설계 요구사항:
   1. LLM을 사용하여 문맥 맞춤형 퀴즈 생성
@@ -65,8 +65,8 @@ def validate_quiz(quiz: dict) -> bool:
 
     검증 조건:
       - question 필드가 존재하고 문자열이어야 함
-      - options 필드가 존재하고 4개의 선택지를 담은 리스트여야 함
-      - correct_option 필드가 존재하고 1~4 범위의 정수여야 함
+      - options 필드가 존재하고 2개(O/X) 또는 4개의 선택지를 담은 리스트여야 함
+      - correct_option 필드가 존재하고 유효 범위의 정수여야 함
       - explanation 필드가 존재하고 비어있지 않은 문자열이어야 함
     """
     try:
@@ -74,15 +74,15 @@ def validate_quiz(quiz: dict) -> bool:
             return False
         
         options = quiz.get("options")
-        if not isinstance(options, list) or len(options) != 4:
+        if not isinstance(options, list) or len(options) not in [2, 4]:
             return False
         for opt in options:
             if not isinstance(opt, str) or not opt.strip():
                 return False
                 
         correct = quiz.get("correct_option")
-        # 1-indexed (1, 2, 3, 4) 정수인지 확인
-        if not isinstance(correct, int) or correct not in [1, 2, 3, 4]:
+        valid_range = [1, 2] if len(options) == 2 else [1, 2, 3, 4]
+        if not isinstance(correct, int) or correct not in valid_range:
             return False
             
         if not isinstance(quiz.get("explanation"), str) or not quiz["explanation"].strip():
@@ -118,7 +118,7 @@ def _generate_demo_quiz(chunk_id: str, context: str) -> QuizDict:
                         explanation=quiz_data["explanation"]
                     )
 
-    # 2. 매칭 실패 시 단순 시뮬레이션
+    # 2. 매칭 실패 시 O/X 시뮬레이션
     # 본문에서 핵심 키워드 검색 시도
     keywords = ["인공지능", "LLM", "RAG", "레이턴시", "메타인지", "문해력", "인지부하", "임베딩"]
     found = "본문 내용"
@@ -129,15 +129,10 @@ def _generate_demo_quiz(chunk_id: str, context: str) -> QuizDict:
 
     return QuizDict(
         chunk_id=chunk_id,
-        question=f"본문에서 설명된 '{found}'의 주요 내용과 가장 일치하는 설명은 무엇인가요?",
-        options=[
-            f"1. {found}은 교육 발달에 아무런 영향을 미치지 않는다.",
-            f"2. {found}의 개념을 명확히 이해하고 활용하여 문해력을 높일 수 있다.",
-            f"3. {found}은 오직 컴퓨터 전공자만 이해할 수 있는 전문 지식이다.",
-            f"4. {found}은 시스템 지연 시간을 오히려 증가시키는 주요 원인이다."
-        ],
-        correct_option=2,
-        explanation=f"본문 문맥상 '{found}' 관련 내용은 독자의 학습 효율을 높이고 문해력을 돕는 용도 또는 특징으로 설명하고 있으므로 2번이 가장 올바른 설명입니다."
+        question=f"본문에 따르면, '{found}'은(는) 독자의 학습 효율을 높이고 문해력 향상에 도움을 줄 수 있다.",
+        options=["O", "X"],
+        correct_option=1,
+        explanation=f"본문 문맥상 '{found}' 관련 내용은 독자의 학습 효율을 높이고 문해력을 돕는 용도 또는 특징으로 설명하고 있으므로, 이 진술은 본문과 일치합니다(O)."
     )
 
 

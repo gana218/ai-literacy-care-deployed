@@ -17,26 +17,22 @@ def _scroll_velocity(event: Dict[str, Any]) -> float:
         return 0.0
 
 
-def calculate_focus_score(events: List[Dict[str, Any]]) -> float:
+def calculate_focus_score(events: List[Dict[str, Any]], baseline_speed: float = None) -> float:
     """
     행동 이벤트 리스트를 분석하여 0~100 사이의 실시간 집중도(Focus Score)를 계산합니다.
-
-    "지금" 얼마나 몰입해 읽고 있는지를 나타내도록 **최근 이벤트 창(window)** 기준으로 산정한다.
-    (누적 합산은 세션이 길어질수록 무조건 낮아지고, 최근 행동 변화에 둔감해지므로 사용하지 않음)
-
-    감점 규칙(집중 저하 신호):
-      - blur(화면 이탈)         : 크게 감점 (이탈 시간 비례 추가)
-      - 빠른 스크롤(스키밍)      : 간격 250ms 미만 또는 속도 1500px/s 초과 시 감점
-      - pause(무동작·멍/이탈)    : 감점
-      - 과도한 dwell(한 단락 20초+ 정체) : 감점
-    정상 속도 스크롤·적정 정독·focus(복귀)는 감점하지 않아 몰입 시 높은 점수를 유지한다.
+    baseline_speed(초당 읽는 글자 수)가 주어지면 속도 임계값을 조절합니다.
     """
     if not events:
         return 100.0
 
-    # 최근 행동 위주로 현재 집중도를 산정 (실시간 반응성 확보)
     recent = events[-12:]
     score = 100.0
+
+    # 기본 기준: 15자/초 일 때 스크롤 속도 1500px/s 이상이면 스키밍으로 판정
+    base_chars_per_sec = 15.0
+    velocity_threshold = 1500.0
+    if baseline_speed and baseline_speed > 0:
+        velocity_threshold = 1500.0 * (baseline_speed / base_chars_per_sec)
 
     for event in recent:
         etype = event.get("type")
@@ -51,10 +47,8 @@ def calculate_focus_score(events: List[Dict[str, Any]]) -> float:
             duration = event.get("duration_ms")
             velocity = _scroll_velocity(event)
             too_fast_interval = duration is not None and duration < 250
-            too_fast_velocity = velocity > 1500
+            too_fast_velocity = velocity > velocity_threshold
             if too_fast_interval or too_fast_velocity:
-                # 스키밍(비정상적으로 빠른 스크롤): 실제로 읽지 않는 신호
-                # 1~2회는 소폭이지만, 지속되면 최근 창(window)을 채워 급격히 하락한다.
                 score -= 8.0
 
         elif etype == "pause":
