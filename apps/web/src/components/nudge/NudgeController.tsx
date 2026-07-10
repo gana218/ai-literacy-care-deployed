@@ -15,25 +15,15 @@
  *
  * TODO 7/6: ③번 WebSocket InterventionCommand에서 nudgeLevel 수신 시 직접 setNudgeLevel 호출
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { useFocusStore } from '../../stores/focusStore';
 import SoftNudge from '../nudge/SoftNudge';
 import MediumNudge from '../nudge/MediumNudge';
 import HardNudge from '../nudge/HardNudge';
 import QuizCard from '../quiz/QuizCard';
-import { getActiveWsClient } from '../../lib/ws';
-
-/** focusScore → nudgeLevel 변환 (백엔드 75/50/30 임계값과 동기화) */
-function scoreToNudgeLevel(score: number): 'none' | 'soft' | 'medium' | 'hard' {
-  if (score >= 75) return 'none';
-  if (score >= 50) return 'soft';
-  if (score >= 30) return 'medium';
-  return 'hard';
-}
 
 export const NudgeController: React.FC = () => {
   const { focusScore, showNudge, dismissNudge, isNudgeVisible } = useFocusStore();
-  const prevLevel = useRef<string>('none');
 
   useEffect(() => {
     // 7/6 추가: 서버 개입 명령(REST/WS)이 상태를 제어하므로

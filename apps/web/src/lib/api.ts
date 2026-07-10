@@ -27,6 +27,7 @@ export interface StartSessionRequest {
   userId: string;
   content?: string[];          // 크롬 확장 프로그램용: 페이지 긁어온 텍스트
   source?: any;                // 크롬 확장 프로그램용: 메타데이터
+  baselineScrollSpeed?: number; // 온보딩 측정 기준 읽기 속도 (글자/초)
 }
 
 export interface StartSessionResponse {

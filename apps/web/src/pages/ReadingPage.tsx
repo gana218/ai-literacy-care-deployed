@@ -153,6 +153,7 @@ export default function ReadingPage() {
           articleId: isUpload ? 'uploaded' : 'default-article',
           userId: cfg.userId ?? 'u_anon_guest',
           content: isUpload ? cfg.uploadedContent! : undefined,
+          baselineScrollSpeed: cfg.baselineScrollSpeed ?? undefined,
         });
 
         if (!active) return;

@@ -318,27 +318,15 @@ export default function DetailedGrowthReport() {
                 
                 {tab === 'weekly' ? (
                   <div className="space-y-3 text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-sans)' }}>
-                    <p>
-                      학습자의 이번 주 총 집중 독해 시간은 <strong className="text-[var(--color-primary)]">164분</strong>으로, 지난주 대비 약 <strong>28% 증가</strong>했습니다.
-                    </p>
-                    <p>
-                      특히 경제/법률 등 어려운 비문학 단락을 읽을 때 평균 체류(Dwell) 시간이 급증하는 경향이 있었으나, 실시간으로 개입한 <strong className="text-[var(--color-nudge-soft)]">Soft Nudge 용어 해설</strong> 및 <strong className="text-[var(--color-nudge-medium)]">이해도 간이 퀴즈</strong>를 해결하며 독해 흐름의 균형을 맞췄습니다. 이로 인해 <strong>어휘 능력 지표가 22점 상승</strong>하는 매우 긍정적인 성과를 거두었습니다.
-                    </p>
-                    <p>
-                      <strong>💡 성장 챌린지:</strong> 다음 주에는 철학/인문 계열 지문 읽기에 도전해보세요. 단락 구조 파악(Structural scanning) 훈련을 병행하면 추론 속도가 더 빨라질 것입니다.
-                    </p>
+                    {data.weekly.prescription?.map((p: string, i: number) => (
+                      <p key={i} dangerouslySetInnerHTML={{ __html: p }} />
+                    ))}
                   </div>
                 ) : (
                   <div className="space-y-3 text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-sans)' }}>
-                    <p>
-                      지난 4주간 총 <strong className="text-[var(--color-primary)]">425분</strong>의 독해 세션을 성공적으로 수행하였으며, 총 <strong className="text-[var(--color-xp)]">3,870 XP</strong>를 누적 획득하여 성장 속도가 가속화되고 있습니다.
-                    </p>
-                    <p>
-                      지속적인 폐루프 넛지 인터랙션을 거치면서, <strong>"쉬운 문장으로 변환하여 읽기"</strong>에 의존하는 비율이 <strong>초기 65%에서 15% 미만</strong>으로 극적으로 줄어들었습니다. 이는 보조 도구 없이 원문 자체를 소화할 수 있는 내재적 문해 체력이 형성되었음을 시각적으로 증명합니다.
-                    </p>
-                    <p>
-                      <strong>💡 성장 챌린지:</strong> 현재 리터러시 레벨은 실버 최상위 구간입니다. 집중력 유지를 위해 넛지 개입 빈도를 한 단계 낮춘 '자율 심화 모드'를 적용할 것을 권장합니다.
-                    </p>
+                    {data.monthly.prescription?.map((p: string, i: number) => (
+                      <p key={i} dangerouslySetInnerHTML={{ __html: p }} />
+                    ))}
                   </div>
                 )}
               </div>
@@ -359,7 +347,7 @@ export default function DetailedGrowthReport() {
                   📖 {tab === 'weekly' ? '이번 주' : '이번 달'} 습득 핵심 어휘 보드
                 </h4>
                 <div className="space-y-3">
-                  {currentWords.map((item, idx) => (
+                  {currentWords.map((item: any, idx: number) => (
                     <div
                       key={idx}
                       className="p-2.5 rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-surface-alt)] transition-colors duration-200"

@@ -31,28 +31,18 @@ interface QuizQuestion {
 const MOCK_QUIZZES: QuizQuestion[] = [
   {
     id: 'q-001',
-    question: '본문에서 설명한 "디지털 리터러시"에 해당하지 않는 것은?',
-    options: [
-      '온라인 정보의 출처를 비판적으로 평가하는 능력',
-      '스마트폰 앱을 빠르게 설치하는 기술 숙련도',
-      'AI가 생성한 콘텐츠의 신뢰성을 판별하는 역량',
-      '디지털 환경에서 정보를 윤리적으로 활용하는 태도',
-    ],
+    question: '본문에 따르면, "디지털 리터러시"란 단순히 스마트폰 앱을 설치하는 기술적 숙련도를 의미한다.',
+    options: ['O', 'X'],
     correctIndex: 1,
-    explanation: '디지털 리터러시는 단순한 기술 사용 능력이 아니라 정보를 비판적으로 읽고, 평가하고, 윤리적으로 활용하는 복합적 역량입니다.',
+    explanation: '디지털 리터러시는 단순한 기술 사용 능력이 아니라 정보를 비판적으로 읽고, 평가하고, 윤리적으로 활용하는 복합적 역량입니다. 따라서 이 진술은 본문과 불일치합니다(X).',
     xpReward: 30,
   },
   {
     id: 'q-002',
-    question: 'LLM의 "환각 현상(Hallucination)"이 문해력 교육에서 위험한 이유로 가장 적절한 것은?',
-    options: [
-      'AI가 응답 속도가 느려져 사용자를 불편하게 만들기 때문이다',
-      '그럴듯하지만 틀린 정보를 사실처럼 제공해 독자의 판단을 왜곡하기 때문이다',
-      'AI가 어려운 어휘를 사용하여 독자의 이해를 방해하기 때문이다',
-      'AI 응답이 너무 길어 핵심 내용을 파악하기 어렵기 때문이다',
-    ],
-    correctIndex: 1,
-    explanation: '환각 현상은 AI가 실제로 없는 정보를 있는 것처럼 자신 있게 제시하여, 독자가 잘못된 정보를 사실로 받아들이게 만드는 것이 핵심 위험입니다.',
+    question: 'LLM의 "환각 현상(Hallucination)"은 그럴듯하지만 사실이 아닌 정보를 생성하여 독자의 판단을 왜곡할 수 있다.',
+    options: ['O', 'X'],
+    correctIndex: 0,
+    explanation: '환각 현상은 AI가 실제로 없는 정보를 있는 것처럼 자신 있게 제시하여, 독자가 잘못된 정보를 사실로 받아들이게 만드는 것이 핵심 위험입니다. 본문과 일치합니다(O).',
     xpReward: 30,
   },
 ];
@@ -251,6 +241,84 @@ export const QuizCard: React.FC = () => {
                 </h3>
 
                 {/* 선택지 */}
+                {currentQuiz.options.length === 2 ? (
+                  /* ── O/X 가로 버튼 모드 ── */
+                  <div style={{ display: 'flex', gap: 'var(--space-4)', marginBottom: 'var(--space-5)' }}>
+                    {currentQuiz.options.map((option, index) => {
+                      const isSelected = selectedIndex === index;
+                      const isCorrectOption = index === currentQuiz.correctIndex;
+                      const revealed = phase !== 'answering';
+                      const isO = option === 'O' || option === '맞다';
+
+                      let bg = 'var(--color-surface)';
+                      let border = 'var(--color-border)';
+                      let textColor = isO ? '#2563eb' : '#dc2626';
+                      let emoji = isO ? '⭕' : '❌';
+
+                      if (revealed) {
+                        if (isCorrectOption) {
+                          bg = '#d1fae5'; border = '#10b981'; textColor = '#065f46';
+                        } else if (isSelected && !isCorrectOption) {
+                          bg = '#fee2e2'; border = '#ef4444'; textColor = '#991b1b';
+                        } else {
+                          textColor = 'var(--color-text-muted)';
+                        }
+                      } else if (isSelected) {
+                        bg = isO ? '#dbeafe' : '#fee2e2';
+                        border = isO ? '#2563eb' : '#dc2626';
+                      }
+
+                      let animProps = {};
+                      let transProps = {};
+                      if (revealed) {
+                        if (isCorrectOption) {
+                          animProps = { scale: [1, 1.05, 1], boxShadow: '0 0 16px rgba(16, 185, 129, 0.5)' };
+                          transProps = { duration: 0.5, ease: 'easeInOut' };
+                        } else if (isSelected) {
+                          animProps = { x: [0, -8, 8, -8, 8, 0] };
+                          transProps = { duration: 0.4 };
+                        }
+                      }
+
+                      return (
+                        <motion.button
+                          key={index}
+                          whileHover={phase === 'answering' ? { scale: 1.04 } : {}}
+                          whileTap={phase === 'answering' ? { scale: 0.96 } : {}}
+                          animate={animProps}
+                          transition={revealed ? transProps : undefined}
+                          onClick={() => handleSelect(index)}
+                          disabled={phase !== 'answering'}
+                          style={{
+                            flex: 1,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            padding: 'var(--space-5) var(--space-4)',
+                            fontSize: '2rem',
+                            fontFamily: 'var(--font-sans)',
+                            fontWeight: 'var(--weight-bold)' as unknown as number,
+                            borderRadius: 'var(--radius-lg)',
+                            border: `2px solid ${border}`,
+                            backgroundColor: bg,
+                            color: textColor,
+                            cursor: phase === 'answering' ? 'pointer' : 'default',
+                            transition: 'background-color 0.25s, border-color 0.25s, color 0.25s',
+                          }}
+                        >
+                          <span style={{ fontSize: '2.5rem' }}>{emoji}</span>
+                          <span>{option}</span>
+                          {revealed && isCorrectOption && (
+                            <span style={{ fontSize: 'var(--text-xs)', color: '#10b981', fontWeight: 'var(--weight-semibold)' as unknown as number }}>정답</span>
+                          )}
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* ── 기존 사지선다 세로 리스트 모드 (하위호환) ── */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginBottom: 'var(--space-5)' }}>
                   {currentQuiz.options.map((option, index) => {
                     const isSelected = selectedIndex === index;
@@ -338,6 +406,7 @@ export const QuizCard: React.FC = () => {
                     );
                   })}
                 </div>
+                )}
 
                 {/* 결과 피드백 */}
                 <AnimatePresence>
