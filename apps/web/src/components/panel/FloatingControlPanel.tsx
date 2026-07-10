@@ -24,11 +24,162 @@ function getFocusLabel(score: number): string {
 
 export const FloatingControlPanel: React.FC = () => {
   const { focusScore, nudgeLevel, isQuizVisible } = useFocusStore();
-  const { progress } = useReadingStore();
+  const { progress, scrollVelocity, dwellTimeMs, gazeOutCount } = useReadingStore();
   const { literacyScore, xp, level, levelProgress } = useScoreStore();
 
   const focusColor = getFocusColor(focusScore);
   const focusLabel = getFocusLabel(focusScore);
+
+  // 7/10: 실시간 독서 변수를 외부 독립 브라우저 팝업 창에 표시하는 기능
+  const openDevMonitor = () => {
+    const monitorWin = window.open('', 'DevMonitor', 'width=460,height=580,resizable=yes');
+    if (!monitorWin) {
+      alert('팝업 차단이 활성화되어 있습니다. 팝업 허용을 해주세요.');
+      return;
+    }
+    
+    monitorWin.document.write(`
+      <html>
+        <head>
+          <title>AI Literacy Care - Live Dev Monitor</title>
+          <style>
+            body {
+              background-color: #0f172a;
+              color: #f8fafc;
+              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+              padding: 20px;
+              margin: 0;
+            }
+            .card {
+              background-color: #1e293b;
+              border: 1px solid #334155;
+              border-radius: 8px;
+              padding: 15px;
+              margin-bottom: 12px;
+            }
+            .title {
+              color: #94a3b8;
+              font-size: 11px;
+              text-transform: uppercase;
+              letter-spacing: 0.1em;
+              margin-bottom: 6px;
+            }
+            .value {
+              font-size: 24px;
+              font-weight: bold;
+            }
+            .badge {
+              display: inline-block;
+              padding: 3px 8px;
+              font-size: 10px;
+              border-radius: 4px;
+              font-weight: bold;
+            }
+            .grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 12px;
+            }
+            .header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              border-bottom: 1px solid #334155;
+              padding-bottom: 10px;
+              margin-bottom: 20px;
+            }
+            .status {
+              font-size: 11px;
+              color: #10b981;
+            }
+            .footer-tip {
+              font-size: 10px;
+              color: #64748b;
+              margin-top: 15px;
+              line-height: 1.4;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <span style="font-size: 14px; font-weight: bold; color: #3b82f6;">🧠 LIVE DEV MONITOR</span>
+            <span class="status" id="connStatus">● RUNNING</span>
+          </div>
+          
+          <div class="card">
+            <div class="title">실시간 집중도 지수 (Focus Score)</div>
+            <div class="value" id="focusScore">0%</div>
+            <div style="margin-top: 8px;" id="focusLevel">-</div>
+          </div>
+
+          <div class="grid">
+            <div class="card">
+              <div class="title">스크롤 속도 (Velocity)</div>
+              <div class="value" id="scrollVelocity">0 px/ms</div>
+            </div>
+            <div class="card">
+              <div class="title">단락 체류 시간 (Dwell)</div>
+              <div class="value" id="dwellTime">0 초</div>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="card">
+              <div class="title">화면 이탈 횟수 (Blur)</div>
+              <div class="value" id="gazeOut">0 회</div>
+            </div>
+            <div class="card">
+              <div class="title">읽기 진행률 (Progress)</div>
+              <div class="value" id="progress">0%</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="title">문해력 종합 스코어 (Literacy)</div>
+            <div class="value" id="literacyScore" style="color: #10b981;">0</div>
+          </div>
+
+          <div class="footer-tip">
+            💡 본 모니터링 창은 부모 창의 상태 변화(Zustand Store)를 200ms 단위로 실시간 폴링하여 출력하고 있습니다. 창을 띄워둔 채로 기사를 스크롤하여 변화를 관측하세요.
+          </div>
+
+          <script>
+            setInterval(() => {
+              if (!window.opener || window.opener.closed) {
+                document.getElementById('connStatus').innerHTML = '○ DISCONNECTED';
+                document.getElementById('connStatus').style.color = '#ef4444';
+                return;
+              }
+              try {
+                // 부모 창의 상태 조회
+                const store = window.opener.useReadingStore.getState();
+                const focus = window.opener.useFocusStore.getState();
+                const score = window.opener.useScoreStore.getState();
+
+                document.getElementById('focusScore').innerText = focus.focusScore + '%';
+                document.getElementById('scrollVelocity').innerText = store.scrollVelocity + ' px/ms';
+                document.getElementById('dwellTime').innerText = Math.round(store.dwellTimeMs / 1000) + ' 초';
+                document.getElementById('gazeOut').innerText = store.gazeOutCount + ' 회';
+                document.getElementById('progress').innerText = store.progress + '%';
+                document.getElementById('literacyScore').innerText = score.literacyScore;
+                
+                let lvl = focus.nudgeLevel;
+                let badgeHtml = '';
+                if (lvl === 'none') badgeHtml = '<span class="badge" style="background-color: #10b981; color: white;">매우 집중 (None)</span>';
+                else if (lvl === 'soft') badgeHtml = '<span class="badge" style="background-color: #3b82f6; color: white;">보통 집중 (Soft)</span>';
+                else if (lvl === 'medium') badgeHtml = '<span class="badge" style="background-color: #f59e0b; color: white;">집중 저하 (Medium)</span>';
+                else if (lvl === 'hard') badgeHtml = '<span class="badge" style="background-color: #ef4444; color: white;">주의 필요 (Hard)</span>';
+                document.getElementById('focusLevel').innerHTML = badgeHtml;
+              } catch (e) {
+                console.error(e);
+              }
+            }, 200);
+          </script>
+        </body>
+      </html>
+    `);
+    monitorWin.document.close();
+  };
 
   // ── 7/1 실시간 개입 로그 상태 ──
   const [logs, setLogs] = useState<{ id: string; time: string; msg: string; type: 'system' | 'nudge' | 'quiz' | 'xp' }[]>([]);
@@ -247,6 +398,59 @@ export const FloatingControlPanel: React.FC = () => {
         <section>
           <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-2.5)', fontWeight: 500 }}>🎖️ 배지 보유현황</p>
           <BadgeShelf compact />
+        </section>
+
+        {/* ── 7/10 추가: 실시간 독서 행동 지표 (Live Monitor) ── */}
+        <section style={{ borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', fontWeight: 600 }}>
+              🔍 실시간 행동 지표 (Live Monitor)
+            </p>
+            <button
+              onClick={openDevMonitor}
+              style={{
+                fontSize: '10px',
+                padding: '2px 8px',
+                backgroundColor: 'var(--color-surface-alt)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '4px',
+                color: 'var(--color-primary)',
+                cursor: 'pointer',
+                fontWeight: 600,
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-border)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-surface-alt)'}
+            >
+              🖥️ 새 창으로 열기
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '10px' }}>
+            <div style={{ backgroundColor: 'var(--color-surface-alt)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '8px' }}>
+              <div style={{ color: 'var(--color-text-secondary)', marginBottom: '2px' }}>스크롤 속도</div>
+              <div style={{ fontSize: '13px', fontWeight: 'bold', color: scrollVelocity > 1.0 ? 'var(--color-danger, #f43f5e)' : 'var(--color-primary)' }}>
+                {scrollVelocity} px/ms
+              </div>
+            </div>
+            <div style={{ backgroundColor: 'var(--color-surface-alt)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '8px' }}>
+              <div style={{ color: 'var(--color-text-secondary)', marginBottom: '2px' }}>단락 체류</div>
+              <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--color-success)' }}>
+                {Math.round(dwellTimeMs / 1000)} 초
+              </div>
+            </div>
+            <div style={{ backgroundColor: 'var(--color-surface-alt)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '8px' }}>
+              <div style={{ color: 'var(--color-text-secondary)', marginBottom: '2px' }}>화면 이탈</div>
+              <div style={{ fontSize: '13px', fontWeight: 'bold', color: gazeOutCount > 0 ? '#ef4444' : 'var(--color-text)' }}>
+                {gazeOutCount} 회
+              </div>
+            </div>
+            <div style={{ backgroundColor: 'var(--color-surface-alt)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '8px' }}>
+              <div style={{ color: 'var(--color-text-secondary)', marginBottom: '2px' }}>집중 상태</div>
+              <div style={{ fontSize: '13px', fontWeight: 'bold', color: focusColor }}>
+                {focusLabel}
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* ── 7/1 추가: 실시간 에이전트 개입 로그 ── */}

@@ -22,11 +22,13 @@ interface ReadingState {
   highlightedParagraphs: number[]; // 하이라이트할 단락 인덱스 배열
   termDefinitions: Record<string, string>; // AI RAG 용어 사전 캐시 (7/5 추가)
   showGlossesInline: boolean; // RAG AI 주석 본문 상시 표시 모드 (7/5 추가)
+  showEasy: boolean; // '쉬운 문장 보기' 토글 (article.contentEasy 렌더)
   article: Article; // 현재 렌더 중인 글 (care=데모 mock, upload=사용자 문서)
 
   // actions
   startSession: (articleId: string, sessionId: string) => void;
   setArticle: (article: Article) => void;
+  toggleEasy: () => void;
   setProgress: (progress: number) => void;
   setScrollVelocity: (velocity: number) => void;
   setDwellTime: (ms: number) => void;
@@ -57,6 +59,7 @@ export const useReadingStore = create<ReadingState>((set) => ({
   article: sampleArticle,
   termDefinitions: {},
   showGlossesInline: false,
+  showEasy: false,
   eventQueue: [],
 
   startSession: (articleId, sessionId) =>
@@ -71,6 +74,7 @@ export const useReadingStore = create<ReadingState>((set) => ({
     set((s) => ({ termDefinitions: { ...s.termDefinitions, [term]: definition } })),
   setTermDefinitions: (termDefinitions) => set({ termDefinitions }),
   toggleGlossesInline: () => set((s) => ({ showGlossesInline: !s.showGlossesInline })),
+  toggleEasy: () => set((s) => ({ showEasy: !s.showEasy })),
   
   enqueueEvent: (event) => set((s) => ({ eventQueue: [...s.eventQueue, event] })),
   clearQueue: () => set({ eventQueue: [] }),

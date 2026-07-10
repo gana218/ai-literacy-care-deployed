@@ -4,12 +4,16 @@ from datetime import datetime
 
 
 # --- Session ---
+class BaselineScrollSpeed(BaseModel):
+    easy: int
+    hard: int
+
 class SessionStartRequest(BaseModel):
     userId: str
     articleId: Optional[str] = None
     content: Optional[list[str]] = None
     source: Optional[dict] = None
-    baselineScrollSpeed: Optional[float] = None
+    baselineScrollSpeed: Optional[BaselineScrollSpeed] = None
 
 
 class SessionStartResponse(BaseModel):

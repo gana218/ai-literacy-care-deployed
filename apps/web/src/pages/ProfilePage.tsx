@@ -6,12 +6,16 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSessionConfig } from '../stores/sessionConfigStore';
+import { useAuthStore } from '../stores/authStore';
 import DashboardPage from './DashboardPage';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
   const userId = useSessionConfig((s) => s.userId);
   const reset = useSessionConfig((s) => s.reset);
+  
+  // 7/11: 로컬 인증 상태 구독
+  const { user, isAuthenticated, signOut } = useAuthStore();
 
   useEffect(() => {
     document.title = 'AI 리터러시 케어 — 내 프로필';
@@ -26,6 +30,11 @@ export default function ProfilePage() {
     navigate('/onboarding', { replace: true });
   };
 
+  const handleSignOut = () => {
+    signOut();
+    navigate('/login', { replace: true });
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
       {/* 프로필 밴드 */}
@@ -37,11 +46,20 @@ export default function ProfilePage() {
           className="w-14 h-14 rounded-full flex items-center justify-center text-2xl shrink-0"
           style={{ backgroundColor: 'var(--color-primary-tint)' }}
         >
-          🕶️
+          {isAuthenticated ? '👤' : '🕶️'}
         </div>
         <div className="flex-1">
-          <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>익명 사용자</div>
-          <div className="font-semibold text-lg tabular-nums">#{shortId}</div>
+          {isAuthenticated ? (
+            <>
+              <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>초기 가입자 ({user?.email})</div>
+              <div className="font-semibold text-lg tabular-nums">{user?.nickname}</div>
+            </>
+          ) : (
+            <>
+              <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>익명 사용자</div>
+              <div className="font-semibold text-lg tabular-nums">#{shortId}</div>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -51,13 +69,32 @@ export default function ProfilePage() {
           >
             ＋ 새 세션
           </button>
-          <button
-            onClick={handleReset}
-            className="px-4 py-2 rounded-md text-sm font-medium"
-            style={{ backgroundColor: 'transparent', color: 'var(--color-danger)', border: '1px solid var(--color-danger)' }}
-          >
-            데이터 초기화
-          </button>
+          {isAuthenticated ? (
+            <button
+              onClick={handleSignOut}
+              className="px-4 py-2 rounded-md text-sm font-medium"
+              style={{ backgroundColor: 'transparent', color: 'var(--color-danger)', border: '1px solid var(--color-danger)' }}
+            >
+              로그아웃
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => navigate('/login')}
+                className="px-4 py-2 rounded-md text-sm font-medium"
+                style={{ backgroundColor: 'var(--color-primary-tint)', color: 'var(--color-primary)', border: '1px solid var(--color-primary)' }}
+              >
+                베타 로그인
+              </button>
+              <button
+                onClick={handleReset}
+                className="px-4 py-2 rounded-md text-sm font-medium"
+                style={{ backgroundColor: 'transparent', color: 'var(--color-danger)', border: '1px solid var(--color-danger)' }}
+              >
+                데이터 초기화
+              </button>
+            </>
+          )}
         </div>
       </div>
 

@@ -27,7 +27,7 @@ export interface StartSessionRequest {
   userId: string;
   content?: string[];          // 크롬 확장 프로그램용: 페이지 긁어온 텍스트
   source?: any;                // 크롬 확장 프로그램용: 메타데이터
-  baselineScrollSpeed?: number; // 온보딩 측정 기준 읽기 속도 (글자/초)
+  baselineScrollSpeed?: { easy: number; hard: number };
 }
 
 export interface StartSessionResponse {
@@ -130,11 +130,6 @@ export interface SessionResultResponse {
 // ──────────────────────────────────────────────
 // API fetch stub (TODO 7/6 실구현)
 // ──────────────────────────────────────────────
-
-export interface GrowthReportResponse {
-  weekly: any;
-  monthly: any;
-}
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
@@ -286,30 +281,6 @@ export const api = {
     }
 
     return { correct: true, explanation: '정답입니다! (mock 서버 오프라인)' };
-  },
-
-  /** 상세 성장 분석 리포트 데이터 조회 */
-  getGrowthReport: async (userId: string): Promise<GrowthReportResponse> => {
-    console.log('[API] getGrowthReport Request:', userId);
-    const useMock = import.meta.env.VITE_USE_MOCK === 'true' || import.meta.env.VITE_USE_MOCK === true;
-
-    if (!useMock) {
-      try {
-        const res = await fetch(`${BASE_URL}/api/user/${userId}/growth`);
-        if (res.ok) {
-          const data = await res.json();
-          return data;
-        }
-      } catch (err) {
-        console.error('[API] Failed to getGrowthReport from server:', err);
-      }
-    }
-    
-    // Fallback (빈 데이터 또는 기본값)
-    return {
-      weekly: null,
-      monthly: null
-    };
   },
 
   /** RAG 기반 어려운 용어/문장 AI 설명 조회 (1번 RAG 팀 고도화 연동) */

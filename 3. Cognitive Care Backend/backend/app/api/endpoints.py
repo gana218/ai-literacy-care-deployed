@@ -1,9 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 import uuid
 import json
-import asyncio
 
 from ..core.db import get_db
 from ..core.redis import get_redis
@@ -19,14 +18,8 @@ from ..services.cognitive_care import calculate_focus_score, determine_intervent
 
 router = APIRouter(prefix="/api/session", tags=["Sessions"])
 
-async def _generate_and_cache_quiz(session_id: str, chunk_id: str, context: str):
-    from ..agents.content_reducer.quiz_generator import generate_quiz
-    quiz_dict = await asyncio.to_thread(generate_quiz, chunk_id, context)
-    redis_client = await get_redis()
-    await redis_client.set(f"session:{session_id}:quiz", json.dumps(quiz_dict))
-
 @router.post("/start", response_model=SessionStartResponse)
-async def start_session(req: SessionStartRequest, request: Request, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
+async def start_session(req: SessionStartRequest, request: Request, db: AsyncSession = Depends(get_db)):
     from sqlalchemy.exc import IntegrityError
     user_result = await db.execute(select(User).filter(User.id == req.userId))
     user = user_result.scalars().first()
@@ -49,9 +42,17 @@ async def start_session(req: SessionStartRequest, request: Request, background_t
     db.add(new_session)
     await db.commit()
     
-    if req.baselineScrollSpeed is not None:
-        redis_client = await get_redis()
-        await redis_client.set(f"session:{session_id}:baseline_speed", str(req.baselineScrollSpeed), ex=86400)
+    # 7/10: 온보딩 캘리브레이션 baselineScrollSpeed를 Redis에 보관
+    redis_client = await get_redis()
+    try:
+        if req.baselineScrollSpeed:
+            baseline_val = {
+                "easy": req.baselineScrollSpeed.easy,
+                "hard": req.baselineScrollSpeed.hard
+            }
+            await redis_client.set(f"session:{session_id}:baseline", json.dumps(baseline_val))
+    finally:
+        await redis_client.aclose()
 
     host = request.headers.get("host", "localhost:8000")
     ws_endpoint = f"ws://{host}/ws/reading/{session_id}"
@@ -78,15 +79,6 @@ async def start_session(req: SessionStartRequest, request: Request, background_t
             "terms": [map_term(t) for t in c.get("terms", [])]
         }
         
-    if updated_state.get("chunks"):
-        first_chunk = updated_state["chunks"][0]
-        c_id = first_chunk["chunk_id"]
-        c_text = first_chunk.get("restructured_text") or first_chunk["original_text"]
-    else:
-        c_id = "doc"
-        c_text = mock_raw_text
-        
-    background_tasks.add_task(_generate_and_cache_quiz, session_id, c_id, c_text)
         
     article_data = {
         "id": document_id,
@@ -107,57 +99,50 @@ async def start_session(req: SessionStartRequest, request: Request, background_t
 @router.post("/{session_id}/events")
 async def process_events(session_id: str, req: EventsRequestModel):
     redis_client = await get_redis()
-    redis_key = f"session:{session_id}:events"
-    for ev in req.events:
-        await redis_client.rpush(redis_key, ev.model_dump_json())
-        
-    all_events_raw = await redis_client.lrange(redis_key, 0, -1)
-    reading_events = []
-    for raw in all_events_raw:
-        data = json.loads(raw)
-        reading_events.append({
-            "type": data["type"],
-            "timestamp_ms": data["timestamp_ms"],
-            "position": data.get("position"),
-            "duration_ms": data.get("duration_ms"),
-            "metadata": data
-        })
+    try:
+        redis_key = f"session:{session_id}:events"
+        for ev in req.events:
+            await redis_client.rpush(redis_key, ev.model_dump_json())
+            
+        all_events_raw = await redis_client.lrange(redis_key, 0, -1)
+        reading_events = []
+        for raw in all_events_raw:
+            data = json.loads(raw)
+            reading_events.append({
+                "type": data["type"],
+                "timestamp_ms": data["timestamp_ms"],
+                "position": data.get("position"),
+                "duration_ms": data.get("duration_ms"),
+                "metadata": data
+            })
 
-    # 로컬 저장된 baseline_speed 가져오기
-    baseline_speed_raw = await redis_client.get(f"session:{session_id}:baseline_speed")
-    baseline_speed = float(baseline_speed_raw) if baseline_speed_raw else None
-
-    focus_score = calculate_focus_score(reading_events, baseline_speed)
-    intervention_needed, intervention_level, msg = determine_intervention(focus_score)
-    
-    level_to_type = {"none": "none", "soft": "highlight", "medium": "nudge", "hard": "quiz"}
-    internal_type = level_to_type.get(intervention_level, "none")
-    
-    state = create_initial_state(session_id=session_id, user_id="", document_id="", raw_text="")
-    state["reading_events"] = reading_events
-    state["focus_score"] = focus_score
-    state["intervention"] = {
-        "level": intervention_level,
-        "type": internal_type,
-        "message": msg
-    }
-    
-    if internal_type == "quiz":
-        cached_quiz = await redis_client.get(f"session:{session_id}:quiz")
-        if cached_quiz:
+        # 7/10: 온보딩 캘리브레이션 baseline 로드
+        baseline_raw = await redis_client.get(f"session:{session_id}:baseline")
+        baseline = None
+        if baseline_raw:
             try:
-                qdata = json.loads(cached_quiz)
-                state["intervention"]["quiz_data"] = {
-                    "quizId": qdata.get("chunk_id", "q-dynamic"),
-                    "question": qdata.get("question", ""),
-                    "options": qdata.get("options", []),
-                    "correctOption": qdata.get("correct_option", 0),
-                    "explanation": qdata.get("explanation", "")
-                }
-            except Exception as e:
-                print(f"Error parsing cached quiz: {e}")
-    
-    return to_intervention_command(state)
+                baseline = json.loads(baseline_raw)
+            except Exception:
+                pass
+
+        focus_score = calculate_focus_score(reading_events, baseline)
+        intervention_needed, intervention_level, msg = determine_intervention(focus_score)
+        
+        level_to_type = {"none": "none", "soft": "highlight", "medium": "nudge", "hard": "quiz"}
+        internal_type = level_to_type.get(intervention_level, "none")
+        
+        state = create_initial_state(session_id=session_id, user_id="", document_id="", raw_text="")
+        state["reading_events"] = reading_events
+        state["focus_score"] = focus_score
+        state["intervention"] = {
+            "level": intervention_level,
+            "type": internal_type,
+            "message": msg
+        }
+        
+        return to_intervention_command(state)
+    finally:
+        await redis_client.aclose()
 
 @router.post("/{session_id}/finish", response_model=SessionFinishResponse)
 async def finish_session(
@@ -336,22 +321,25 @@ async def submit_quiz(
 
     # Q1: 채점 결과를 Redis에 누적 저장 (session:{id}:quiz_result)
     redis_client = await get_redis()
-    quiz_key = f"session:{session_id}:quiz_result"
-    existing_raw = await redis_client.get(quiz_key)
-    if existing_raw:
-        existing = json.loads(existing_raw)
-    else:
-        existing = {"correct_count": 0, "total_count": 0, "answers": []}
+    try:
+        quiz_key = f"session:{session_id}:quiz_result"
+        existing_raw = await redis_client.get(quiz_key)
+        if existing_raw:
+            existing = json.loads(existing_raw)
+        else:
+            existing = {"correct_count": 0, "total_count": 0, "answers": []}
 
-    existing["total_count"] += 1
-    if is_correct:
-        existing["correct_count"] += 1
-    existing["answers"].append({
-        "quiz_id":  req.quizId,
-        "selected": req.selectedOption,
-        "correct":  is_correct
-    })
-    await redis_client.set(quiz_key, json.dumps(existing), ex=86400)  # 24h TTL
+        existing["total_count"] += 1
+        if is_correct:
+            existing["correct_count"] += 1
+        existing["answers"].append({
+            "quiz_id":  req.quizId,
+            "selected": req.selectedOption,
+            "correct":  is_correct
+        })
+        await redis_client.set(quiz_key, json.dumps(existing), ex=86400)  # 24h TTL
+    finally:
+        await redis_client.aclose()
 
     return QuizSubmitResponse(
         correct=is_correct,

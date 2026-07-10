@@ -58,12 +58,6 @@ export default function ReadingPage() {
     const handleInterventionCommand = (command: any) => {
       if (!command) return;
       console.log('[ReadingPage] ← Received REST Intervention Command:', command);
-
-      // 모든 개입(명령) 응답에 포함된 집중도를 항상 UI에 동기화
-      if (command.payload && command.payload.focusScore !== undefined) {
-        setFocusScore(command.payload.focusScore);
-      }
-
       switch (command.type) {
         case 'nudge':
           if (command.payload.nudgeLevel) {
@@ -71,7 +65,6 @@ export default function ReadingPage() {
           }
           break;
         case 'quiz':
-          showNudge(command.payload.nudgeLevel || 'hard', command.payload.nudgeMessage);
           if (command.payload.quiz) {
             setActiveQuiz(command.payload.quiz);
             showQuiz();
@@ -84,8 +77,12 @@ export default function ReadingPage() {
           }
           break;
         case 'score_update':
-          // 집중도 외에 추가로 처리할 상태가 없다면 skip
-          // (백엔드의 max(positions) 기반 progress로 덮어쓰지 않도록 제거함)
+          if (command.payload.focusScore !== undefined) {
+            setFocusScore(command.payload.focusScore);
+          }
+          if (command.payload.progress !== undefined) {
+            setProgress(command.payload.progress);
+          }
           break;
         case 'session_end':
           if (currentSessionId) {
@@ -161,6 +158,25 @@ export default function ReadingPage() {
         currentSessionId = sessionData.sessionId;
         // Zustand store 세션 연동 시작
         startSessionStore(sessionData.article.id, sessionData.sessionId);
+
+        // 업로드 모드: 백엔드(2번)가 재구성한 쉬운 문장(restructuredText)을 원문과 함께 저장
+        // → 리더의 '쉬운 문장 보기' 토글이 업로드한 문서에도 작동
+        if (isUpload) {
+          const chunks: any[] = (sessionData.article as any)?.chunks ?? [];
+          const originals = chunks.map((c) => c.originalText).filter(Boolean);
+          const easies = chunks.map((c) => c.restructuredText || c.originalText);
+          if (originals.length) {
+            useReadingStore.getState().setArticle({
+              id: sessionData.article.id ?? 'uploaded',
+              title: cfg.uploadedTitle ?? '내가 올린 문서',
+              category: '내 업로드',
+              author: '익명 업로드',
+              publishedAt: '방금',
+              content: originals,
+              contentEasy: easies,
+            });
+          }
+        }
 
         // 7/5 추가: AI RAG 설명 사전 프리페치
         const termsToPrefetch = [
@@ -247,7 +263,7 @@ export default function ReadingPage() {
 
           {/* 완독 전: 안내 카드 */}
           {!isFinished && (
-            <Card variant="flat" className="p-4">
+            <Card variant="flat" className="p-4 space-y-2">
               <p
                 className="text-xs"
                 style={{
@@ -262,6 +278,25 @@ export default function ReadingPage() {
                 스크롤할수록 Literacy Score가 실시간 계산됩니다. 25%/50%/75%/90%/완독 구간마다 대시보드 차트에 새 포인트가 추가됩니다.
                 우측 패널 [집중도 시뮬]로 넛지→퀴즈 흐름을 시연하면, 퀴즈 결과도 즉시 점수에 반영됩니다.
               </p>
+              <div 
+                className="text-[11px] border-t border-dashed pt-2 mt-2 space-y-1"
+                style={{
+                  color: 'var(--color-text-muted)',
+                  borderColor: 'var(--color-border)',
+                  fontFamily: 'var(--font-sans)',
+                  lineHeight: '1.4',
+                }}
+              >
+                <span className="font-semibold block" style={{ color: 'var(--color-text-secondary)' }}>
+                  ⚠️ 집중도(Focus Score) 측정의 조작적 정의 & 한계 명시
+                </span>
+                <p>
+                  • 본 서비스에서의 <b>"집중"</b>이란 브라우저 활성화(Foreground) 상태, 개인 스크롤 baseline 기준 속도 준수, 단락 체류 안정성(2~20초)을 만족하는 독서 행동입니다.
+                </p>
+                <p>
+                  • <b>측정 제한사항:</b> 창 이탈(Blur)은 전화 수신 등의 시스템 알림도 포함되어 감점될 수 있으며, 외부 단어 검색을 위한 이탈은 시스템이 의도를 인지하지 못해 이탈 감점 처리됩니다. (향후 인앱 단어 사전 완비로 보완 예정)
+                </p>
+              </div>
             </Card>
           )}
         </div>
