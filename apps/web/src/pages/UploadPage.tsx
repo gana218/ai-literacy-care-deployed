@@ -53,6 +53,13 @@ const DEFAULT_DEMO_ARTICLES: UploadedArticle[] = [
   }
 ];
 
+// PDF.js window 인터페이스 우회 선언
+declare global {
+  interface Window {
+    pdfjsLib: any;
+  }
+}
+
 const ARTICLES_KEY = 'local_uploaded_articles_db';
 
 export default function UploadPage() {
@@ -71,6 +78,72 @@ export default function UploadPage() {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [error, setError] = useState('');
+  const [parsingPdf, setParsingPdf] = useState(false);
+
+  // 7/11: PDF.js 브라우저용 라이브러리 동적 마운트
+  useEffect(() => {
+    if (!window.pdfjsLib) {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';
+      script.onload = () => {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+        console.log('[PDF.js] Loaded successfully via CDN');
+      };
+      document.body.appendChild(script);
+    }
+  }, []);
+
+  // PDF 파일 텍스트 추출 분석 핸들러
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 제목 자동 설정
+    const nameWithoutExt = file.name.replace(/\.pdf$/i, '');
+    setTitle(nameWithoutExt);
+
+    if (!window.pdfjsLib) {
+      window.alert('PDF 분석 엔진이 아직 로드 중입니다. 1~2초만 기다렸다가 다시 시도해 주세요!');
+      return;
+    }
+
+    setParsingPdf(true);
+    setError('');
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async function () {
+        try {
+          const typedarray = new Uint8Array(this.result as ArrayBuffer);
+          const pdf = await window.pdfjsLib.getDocument(typedarray).promise;
+          let fullText = '';
+
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map((item: any) => item.str).join(' ');
+            fullText += pageText + '\n\n';
+          }
+
+          if (!fullText.trim()) {
+            setError('PDF 파일에서 추출한 텍스트가 없습니다. 이미지 형식의 PDF인지 확인바랍니다.');
+          } else {
+            setBody(fullText.trim());
+          }
+        } catch (err) {
+          console.error('[PDF] parsing error:', err);
+          setError('PDF 내용을 디코딩하는 중 장애가 발생했습니다.');
+        } finally {
+          setParsingPdf(false);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } catch (err) {
+      console.error(err);
+      setError('PDF 파일을 읽어오는 중 에러가 발생했습니다.');
+      setParsingPdf(false);
+    }
+  };
 
   // 1. 로컬스토리지에서 업로드된 문서 목록 로드 (없으면 데모 주입)
   useEffect(() => {
@@ -265,6 +338,34 @@ export default function UploadPage() {
             )}
 
             <div className="space-y-4">
+              {/* PDF 파일 드롭 영역 */}
+              <div
+                className="border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all duration-200 hover:opacity-90"
+                style={{
+                  borderColor: parsingPdf ? 'var(--color-primary)' : 'var(--color-border)',
+                  backgroundColor: 'var(--color-surface-alt)',
+                }}
+                onClick={() => !parsingPdf && document.getElementById('pdf-file-input')?.click()}
+              >
+                <div className="text-3xl mb-1">{parsingPdf ? '⚙️' : '📁'}</div>
+                <div className="text-sm font-bold">
+                  {parsingPdf ? 'PDF 본문 텍스트 분석 중...' : 'PDF 파일 올리기'}
+                </div>
+                <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                  {parsingPdf 
+                    ? '잠시만 기다려 주세요. 텍스트를 파싱 중입니다.' 
+                    : '클릭해서 로컬 PDF 파일을 첨부하면 본문이 아래 폼에 자동 입력됩니다.'}
+                </p>
+                <input
+                  id="pdf-file-input"
+                  type="file"
+                  accept=".pdf"
+                  onChange={handlePdfUpload}
+                  disabled={parsingPdf}
+                  className="hidden"
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-semibold mb-1">제목 (선택)</label>
                 <input
