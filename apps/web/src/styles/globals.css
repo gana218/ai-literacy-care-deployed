@@ -118,9 +118,9 @@
   }
 }
 
-/* html, body, #root 전체에 웜 그라데이션 배경 강제 주입 */
+/* html, body, #root 전체에 몽환적인 파스텔 그라데이션 강제 주입 */
 html, body, #root {
-  background: linear-gradient(180deg, #FFF9F2 0%, #E8DCC8 100%) fixed !important;
+  background: linear-gradient(135deg, #FDE6E6 0%, #E6E9FE 50%, #DAC4FA 100%) fixed !important;
 }
 
 /* 카드 및 컨테이너에 반투명 페이퍼 글래스 필터 레이어 강제 주입 */

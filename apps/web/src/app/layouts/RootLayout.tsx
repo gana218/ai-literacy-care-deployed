@@ -21,11 +21,11 @@ export default function RootLayout() {
   // 7/11: 로컬 인증 상태 및 온보딩 여부 구독
   const { user, isAuthenticated } = useAuthStore();
 
-  // 7/11: 리액트 렌더 마운트 시 웜 그라데이션 및 바디 투명성 재확증 강제 부여
+  // 7/11: 리액트 렌더 마운트 시 몽환적인 파스텔 그라데이션(ref-reading) 강제 부여
   useEffect(() => {
     try {
-      document.documentElement.style.setProperty('background', 'linear-gradient(180deg, #FFF9F2 0%, #E8DCC8 100%) fixed', 'important');
-      document.body.style.setProperty('background', 'linear-gradient(180deg, #FFF9F2 0%, #E8DCC8 100%) fixed', 'important');
+      document.documentElement.style.setProperty('background', 'linear-gradient(135deg, #FDE6E6 0%, #E6E9FE 50%, #DAC4FA 100%) fixed', 'important');
+      document.body.style.setProperty('background', 'linear-gradient(135deg, #FDE6E6 0%, #E6E9FE 50%, #DAC4FA 100%) fixed', 'important');
     } catch (e) {
       console.error(e);
     }
