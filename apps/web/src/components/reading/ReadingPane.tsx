@@ -244,6 +244,19 @@ export const ReadingPane: React.FC = () => {
     };
   }, [sessionId, enqueueEvent]);
 
+  // ── 실시간 UI 갱신 (스크롤 멈춤 감지 및 체류 시간 업데이트) ──
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // 마지막 스크롤 후 300ms 지났으면 속도 0으로 초기화
+      if (Date.now() - lastScrollTime.current > 300) {
+        setScrollVelocity(0);
+      }
+      // 단락 체류 시간 실시간 반영
+      setDwellTime(Date.now() - dwellStart.current);
+    }, 500);
+    return () => clearInterval(interval);
+  }, [setScrollVelocity, setDwellTime]);
+
   return (
     <div
       style={{
