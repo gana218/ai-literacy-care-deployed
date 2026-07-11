@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.extension_session import router as extension_session_router
 from backend.app.api.reading_session import router as reading_session_router
+from backend.app.api.terms import router as terms_router
 
 
 def _load_dotenv() -> None:
@@ -63,6 +64,7 @@ app.add_middleware(
 
 app.include_router(reading_session_router, prefix="/api")
 app.include_router(extension_session_router, prefix="/api")
+app.include_router(terms_router, prefix="/api")
 
 
 @app.get("/health")

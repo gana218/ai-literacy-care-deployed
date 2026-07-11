@@ -53,13 +53,6 @@ const DEFAULT_DEMO_ARTICLES: UploadedArticle[] = [
   }
 ];
 
-// PDF.js window 인터페이스 우회 선언
-declare global {
-  interface Window {
-    pdfjsLib: any;
-  }
-}
-
 const ARTICLES_KEY = 'local_uploaded_articles_db';
 
 export default function UploadPage() {
@@ -80,67 +73,29 @@ export default function UploadPage() {
   const [error, setError] = useState('');
   const [parsingPdf, setParsingPdf] = useState(false);
 
-  // 7/11: PDF.js 브라우저용 라이브러리 동적 마운트
-  useEffect(() => {
-    if (!window.pdfjsLib) {
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';
-      script.onload = () => {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-        console.log('[PDF.js] Loaded successfully via CDN');
-      };
-      document.body.appendChild(script);
-    }
-  }, []);
-
-  // PDF 파일 텍스트 추출 분석 핸들러
-  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  // PDF 파일 → pdf.js로 문단 추출(확장 뷰어와 동일 로직, 번들·오프라인 안전) → 본문 자동 입력.
+  // pdf.js는 크므로 실제 업로드 시에만 지연 로딩한다.
+  const processPdf = async (file: File | undefined | null) => {
     if (!file) return;
-
-    // 제목 자동 설정
-    const nameWithoutExt = file.name.replace(/\.pdf$/i, '');
-    setTitle(nameWithoutExt);
-
-    if (!window.pdfjsLib) {
-      window.alert('PDF 분석 엔진이 아직 로드 중입니다. 1~2초만 기다렸다가 다시 시도해 주세요!');
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      setError('PDF 파일만 올릴 수 있어요.');
       return;
     }
-
+    if (!title.trim()) setTitle(file.name.replace(/\.pdf$/i, ''));
     setParsingPdf(true);
     setError('');
-
     try {
-      const reader = new FileReader();
-      reader.onload = async function () {
-        try {
-          const typedarray = new Uint8Array(this.result as ArrayBuffer);
-          const pdf = await window.pdfjsLib.getDocument(typedarray).promise;
-          let fullText = '';
-
-          for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            const pageText = textContent.items.map((item: any) => item.str).join(' ');
-            fullText += pageText + '\n\n';
-          }
-
-          if (!fullText.trim()) {
-            setError('PDF 파일에서 추출한 텍스트가 없습니다. 이미지 형식의 PDF인지 확인바랍니다.');
-          } else {
-            setBody(fullText.trim());
-          }
-        } catch (err) {
-          console.error('[PDF] parsing error:', err);
-          setError('PDF 내용을 디코딩하는 중 장애가 발생했습니다.');
-        } finally {
-          setParsingPdf(false);
-        }
-      };
-      reader.readAsArrayBuffer(file);
+      const { extractPdfParagraphs } = await import('../lib/pdfExtract');
+      const paras = await extractPdfParagraphs(file);
+      if (paras.length === 0) {
+        setError('PDF에서 텍스트를 추출하지 못했어요. 스캔한 이미지 PDF는 글자 레이어가 없을 수 있어요.');
+      } else {
+        setBody(paras.join('\n\n'));
+      }
     } catch (err) {
-      console.error(err);
-      setError('PDF 파일을 읽어오는 중 에러가 발생했습니다.');
+      console.error('[PDF] 추출 실패:', err);
+      setError('PDF를 읽는 중 오류가 발생했어요. 다른 파일로 시도해 주세요.');
+    } finally {
       setParsingPdf(false);
     }
   };
@@ -346,21 +301,23 @@ export default function UploadPage() {
                   backgroundColor: 'var(--color-surface-alt)',
                 }}
                 onClick={() => !parsingPdf && document.getElementById('pdf-file-input')?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); if (!parsingPdf) void processPdf(e.dataTransfer.files?.[0]); }}
               >
                 <div className="text-3xl mb-1">{parsingPdf ? '⚙️' : '📁'}</div>
                 <div className="text-sm font-bold">
                   {parsingPdf ? 'PDF 본문 텍스트 분석 중...' : 'PDF 파일 올리기'}
                 </div>
                 <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
-                  {parsingPdf 
-                    ? '잠시만 기다려 주세요. 텍스트를 파싱 중입니다.' 
-                    : '클릭해서 로컬 PDF 파일을 첨부하면 본문이 아래 폼에 자동 입력됩니다.'}
+                  {parsingPdf
+                    ? '잠시만 기다려 주세요. 텍스트를 파싱 중입니다.'
+                    : 'PDF를 끌어다 놓거나 클릭해서 첨부하면 본문이 아래 폼에 자동 입력됩니다. (파일은 서버로 올라가지 않아요)'}
                 </p>
                 <input
                   id="pdf-file-input"
                   type="file"
-                  accept=".pdf"
-                  onChange={handlePdfUpload}
+                  accept="application/pdf"
+                  onChange={(e) => void processPdf(e.target.files?.[0])}
                   disabled={parsingPdf}
                   className="hidden"
                 />
