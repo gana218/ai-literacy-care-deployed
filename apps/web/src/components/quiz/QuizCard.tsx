@@ -309,7 +309,9 @@ export const QuizCard: React.FC = () => {
                           }}
                         >
                           <span style={{ fontSize: '2.5rem' }}>{emoji}</span>
-                          <span>{option}</span>
+                          {!(option === 'O' || option === 'X' || option === 'O/X') && (
+                            <span>{option}</span>
+                          )}
                           {revealed && isCorrectOption && (
                             <span style={{ fontSize: 'var(--text-xs)', color: '#10b981', fontWeight: 'var(--weight-semibold)' as unknown as number }}>정답</span>
                           )}
