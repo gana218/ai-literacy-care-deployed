@@ -58,6 +58,15 @@ export default function ReadingPage() {
     const handleInterventionCommand = (command: any) => {
       if (!command) return;
       console.log('[ReadingPage] ← Received REST Intervention Command:', command);
+      
+      // 모든 커맨드에 대해 점수 및 진행률 업데이트를 공통으로 수행
+      if (command.payload && command.payload.focusScore !== undefined) {
+        setFocusScore(command.payload.focusScore);
+      }
+      if (command.payload && command.payload.progress !== undefined) {
+        setProgress(command.payload.progress);
+      }
+
       switch (command.type) {
         case 'nudge':
           if (command.payload.nudgeLevel) {
@@ -77,12 +86,7 @@ export default function ReadingPage() {
           }
           break;
         case 'score_update':
-          if (command.payload.focusScore !== undefined) {
-            setFocusScore(command.payload.focusScore);
-          }
-          if (command.payload.progress !== undefined) {
-            setProgress(command.payload.progress);
-          }
+          // 점수는 이미 위에서 공통으로 업데이트됨
           break;
         case 'session_end':
           if (currentSessionId) {
