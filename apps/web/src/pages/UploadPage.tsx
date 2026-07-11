@@ -9,6 +9,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSessionConfig } from '../stores/sessionConfigStore';
 import { useReadingStore } from '../stores/readingStore';
 import { Button } from '../components/common/Button';
+import BottomTabBar from '../components/common/BottomTabBar';
 
 const SAMPLE = `인공지능 기술이 일상에 빠르게 스며들면서, 정보를 비판적으로 읽는 능력의 중요성이 커지고 있습니다.
 
@@ -63,7 +64,7 @@ export default function UploadPage() {
 
   return (
     <div
-      className="min-h-screen px-4 py-10"
+      className="min-h-screen px-4 pt-10 pb-24"
       style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)', fontFamily: 'var(--font-sans)' }}
     >
       <div className="max-w-2xl mx-auto">
@@ -136,6 +137,9 @@ export default function UploadPage() {
           이 문서로 읽기 시작 →
         </Button>
       </div>
+      
+      {/* 7/11: 하단 고정 탭 네비게이션 바 */}
+      <BottomTabBar />
     </div>
   );
 }

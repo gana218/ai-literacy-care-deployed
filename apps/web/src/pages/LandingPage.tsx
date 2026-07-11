@@ -8,30 +8,41 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSessionConfig } from '../stores/sessionConfigStore';
+import { useAuthStore } from '../stores/authStore';
+import TutorialModal from '../components/common/TutorialModal';
+import BottomTabBar from '../components/common/BottomTabBar';
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const userId = useSessionConfig((s) => s.userId);
   const setMode = useSessionConfig((s) => s.setMode);
-  const clearUpload = useSessionConfig((s) => s.clearUpload);
+  
+  // 7/11: 업로드 유무 검증을 위해 스토어 조회
+  const uploadedContent = useSessionConfig((s) => s.uploadedContent);
+  
+  // 7/11: 로컬 인증 상태 구독
+  const { user, isAuthenticated } = useAuthStore();
 
   useEffect(() => {
     document.title = 'AI 리터러시 케어 — 모드 선택';
   }, []);
 
   const startCare = () => {
+    if (!uploadedContent || uploadedContent.length === 0) {
+      window.alert('분석할 문서가 아직 업로드되지 않았습니다. 먼저 기사 텍스트나 URL을 페이지 업로드 탭에서 등록해 주세요!');
+      navigate('/upload');
+      return;
+    }
     setMode('care');
-    clearUpload();
     navigate('/reading');
   };
 
-  const goUpload = () => navigate('/upload');
 
   const shortId = userId ? userId.replace('u_anon_', '').slice(0, 8) : 'guest';
 
   return (
     <div
-      className="min-h-screen px-4 py-10"
+      className="min-h-screen px-4 pt-10 pb-24"
       style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)', fontFamily: 'var(--font-sans)' }}
     >
       <div className="max-w-4xl mx-auto">
@@ -60,23 +71,15 @@ export default function LandingPage() {
           읽을 콘텐츠를 고르면 실시간으로 집중도를 측정하고 맞춤 개입을 제공합니다.
         </p>
 
-        {/* 모드 카드 2개 */}
-        <div className="grid gap-4 sm:grid-cols-2 mb-6">
+        {/* 모드 카드 (실시간 케어 단일 대형 카드 배치) */}
+        <div className="mb-6">
           <ModeCard
             emoji="⚡"
             title="실시간 케어 ON"
-            desc="준비된 데모 글로 바로 시작. 스크롤·집중도를 추적해 넛지와 퀴즈가 실시간으로 뜹니다."
-            badge="가장 빠른 체험"
+            desc="업로드한 문서의 읽기 행동 패턴(스크롤, 체류 시간, 이탈 등)을 실시간 추적하여 문맥 설명 넛지와 단락 퀴즈를 케어해 줍니다."
+            badge="실시간 케어 진행하기"
             accent="var(--color-engagement)"
             onClick={startCare}
-          />
-          <ModeCard
-            emoji="📄"
-            title="페이지 업로드"
-            desc="읽고 싶은 기사 URL이나 텍스트를 붙여넣으면, 그 문서를 가져와 똑같이 케어합니다."
-            badge="내 문서로"
-            accent="var(--color-primary)"
-            onClick={goUpload}
           />
         </div>
 
@@ -112,6 +115,12 @@ export default function LandingPage() {
           </button>
         </div>
       </div>
+
+      {/* 7/11: 초기 가입자 온보딩 튜토리얼 모달 오버레이 */}
+      {isAuthenticated && user && !user.onboardingCompleted && <TutorialModal />}
+
+      {/* 7/11: 하단 탭 네비게이션 바 */}
+      <BottomTabBar />
     </div>
   );
 }

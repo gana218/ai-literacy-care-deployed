@@ -3,6 +3,7 @@ import { useFocusStore } from '../../stores/focusStore';
 import { useReadingStore } from '../../stores/readingStore';
 import { useAuthStore } from '../../stores/authStore';
 import TutorialModal from '../../components/common/TutorialModal';
+import BottomTabBar from '../../components/common/BottomTabBar';
 
 /**
  * RootLayout — 6/22 스토어 연결 업데이트
@@ -21,7 +22,7 @@ export default function RootLayout() {
 
   return (
     <div
-      className="min-h-screen transition-colors duration-200"
+      className="min-h-screen pb-24 transition-colors duration-200"
       style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}
     >
       {/* ── 헤더 ── */}
@@ -116,6 +117,9 @@ export default function RootLayout() {
 
       {/* 7/11: 초기 가입자 온보딩 튜토리얼 모달 오버레이 */}
       {isAuthenticated && user && !user.onboardingCompleted && <TutorialModal />}
+
+      {/* 7/11: 하단 고정 탭 네비게이션 바 */}
+      <BottomTabBar />
     </div>
   );
 }
