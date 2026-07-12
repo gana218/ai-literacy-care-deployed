@@ -12,13 +12,14 @@
 
 | 항목 | 상태 | 구현 내용 |
 |---|---|---|
-| Faithfulness 평가 | 구현됨 | 원문과 생성 결과 사이의 단어 중첩을 기반으로 점수 계산 |
+| Faithfulness 평가 | 구현됨 | 생성 결과 단어 중 원문에 근거한 단어 비율을 기반으로 점수 계산 |
 | Answer Relevance 평가 | 구현됨 | 질문과 답변 사이의 단어 중첩을 기반으로 점수 계산 |
 | Overall Score | 구현됨 | Faithfulness와 Relevance의 평균값 계산 |
 | Pass / Fail 판정 | 구현됨 | `PASS_THRESHOLD`와 평균 점수를 비교하여 판정 |
-| Golden Dataset 평가 | 구현됨 | JSON 형식의 평가 샘플을 불러와 개별 점수 산출 |
-| Orchestrator 통합 | 구현됨 | `run_evaluation_from_state()`를 통해 ReadingSessionState 평가 |
-| 비차단 평가 연결 | 구현됨 | 평가 실패가 전체 읽기 세션 파이프라인을 중단하지 않도록 연결 |
+| Golden Dataset 평가 | 구현됨 | `golden_dataset/article_*.json` 전체를 pytest 회귀 테스트로 실행 |
+| Orchestrator 통합 | 부분 구현 | `run_evaluation_from_state()`가 `quizzes`와 `chunks` 기반 state를 평가하나, 소비 경로의 vendor 갱신이 필요 |
+| 웹 결과 QA 표시 | 미구현 | 3번 웹 경로에 evaluation 모듈과 Redis chunk 복원 연결 필요 |
+| 비차단 평가 연결 | 부분 구현 | 소비 역할에서 동일 모듈을 사용하도록 재-vendor 필요 |
 | 평가 결과 메타데이터 | 구현됨 | session ID, document ID, trace 및 error 존재 여부 기록 |
 
 ---
@@ -66,8 +67,8 @@ PASS_THRESHOLD = 0.30
 | 기술 | 현재 상태 | 현재 대체 방식 | 대체 이유 |
 |---|---|---|---|
 | RAGAS | 실제 라이브러리 미연결 | 단어 중첩 기반 Faithfulness 및 Relevance | 외부 LLM API 비용과 네트워크 의존성 제거 |
-| Promptfoo | 실제 실행 환경 미연결 | 동일 Golden Dataset에 대한 이전·현재 결과 비교 구조 | 제한된 개발 기간 내 재현 가능한 회귀 평가 우선 |
-| LangSmith | 클라우드 추적 미연결 | 로컬 JSON Trace 및 상태 메타데이터 | API 키 없이도 실행 흐름과 오류 여부를 기록하기 위함 |
+| Promptfoo | 실제 실행 환경 미연결 | Golden Dataset pytest 회귀 테스트 | 제한된 개발 기간 내 재현 가능한 회귀 평가 우선 |
+| LangSmith | 클라우드 추적 미연결 | 상태 메타데이터 기록, 로컬 Trace 확장 예정 | API 키 없이도 실행 흐름과 오류 여부를 기록하기 위함 |
 
 위 기능은 구현 완료로 표시하지 않으며, 현재 적용한 대체 방식과 향후 교체 지점을 코드와 문서에 명시한다.
 
@@ -130,10 +131,12 @@ evaluation_pipeline
 |---|---|
 | 로컬 휴리스틱 평가 | Real |
 | Golden Dataset 실행 구조 | Real |
-| Orchestrator 비차단 통합 | Real |
+| Orchestrator state 평가 함수 | Real |
+| 소비 역할 vendor 통합 | Partial |
+| 웹 결과 QA 표시 | Missing |
 | Pass / Fail 판정 | Real |
 | 실제 품질 리포트 생성 | 구현 진행 |
 | 실제 RAGAS 실행 | 미구현 |
 | 실제 Promptfoo 실행 | 미구현 |
 | 실제 LangSmith 클라우드 추적 | 미구현 |
-| 로컬 JSON Trace | 구현 예정 또는 대체 적용 |
+| 로컬 JSON Trace | 구현 예정 |
