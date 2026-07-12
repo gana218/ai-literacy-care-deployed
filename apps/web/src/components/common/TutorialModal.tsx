@@ -60,6 +60,18 @@ export default function TutorialModal() {
                 <span style={{ color: '#f43f5e' }}><AlertTriangle size={24} /></span>
                 <span className="text-xs font-semibold uppercase tracking-wider text-rose-500">제작 배경 (Background)</span>
               </div>
+              
+              <div className="rounded-xl border p-4" style={{ backgroundColor: 'rgba(245, 158, 11, 0.08)', borderColor: 'rgba(245, 158, 11, 0.2)' }}>
+                <div className="flex items-start gap-3">
+                  <div className="text-amber-500 mt-0.5"><AlertTriangle size={18} /></div>
+                  <div>
+                    <h3 className="text-sm font-bold text-amber-600 dark:text-amber-400 mb-1">튜토리얼 및 본편 진행 전 안내</h3>
+                    <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                      너무 의식해서 잘 읽으려고 노력하지 마세요! 평소처럼 편안하고 자연스럽게 텍스트를 읽어주셔야 AI가 <strong>당신만의 진짜 독서 기준점(Baseline)</strong>을 정확하게 파악하고 맞춤형 케어를 제공할 수 있습니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
               <h2 className="text-xl md:text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
                 AI 시대, 무너지는 현대인의 기능적 문해력
               </h2>
