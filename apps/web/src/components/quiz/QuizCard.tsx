@@ -284,12 +284,6 @@ export const QuizCard: React.FC = () => {
                                   <button
                                     key={idx}
                                     onClick={() => handleSelect(quiz, idx)}
-                                    onTouchEnd={(e) => {
-                                      e.preventDefault();
-                                      if (!isAnswered && phase === 'answering') {
-                                        handleSelect(quiz, idx);
-                                      }
-                                    }}
                                     disabled={isAnswered || phase !== 'answering'}
                                     style={{
                                       width: '44px',
