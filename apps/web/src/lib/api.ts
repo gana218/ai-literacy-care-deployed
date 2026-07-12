@@ -70,9 +70,12 @@ export interface HighlightRange {
 
 export interface QuizData {
   quizId: string;
-  question: string;
-  options: string[];
-  correctOption: string;       // 실제 UI에서는 숨기고, 제출 후 서버 검증
+  type?: 'ox';
+  statement?: string;
+  answer?: boolean;
+  question?: string;
+  options?: string[];
+  correctOption?: string | number;       // 실제 UI에서는 숨기고, 제출 후 서버 검증
   explanation?: string;
 }
 

@@ -13,7 +13,7 @@ export const GrowthDashboard: React.FC = () => {
   // 케어 전후 최대 델타 계산
   const maxDelta =
     scoreSeries.length >= 2
-      ? Math.max(...scoreSeries.map((d) => d.after - d.before))
+      ? Math.max(...scoreSeries.map((d) => (d.after || 0) - (d.before || 0)))
       : 0;
 
   return (

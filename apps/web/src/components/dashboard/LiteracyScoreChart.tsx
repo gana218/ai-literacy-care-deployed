@@ -266,24 +266,14 @@ export const LiteracyScoreChart: React.FC<LiteracyScoreChartProps> = ({
             animationDuration={600}
           />
 
-<<<<<<< HEAD
-          {/* 케어 적용 (실선 — 라이브 Dot 포함) */}
+          {/* 케어 적용 (실선 — 라이브 Dot 포함, 시인성 대폭 강화) */}
           <Line
             type="monotone"
             dataKey="after"
             name="케어 적용"
-            stroke="var(--color-comprehension)"
-            strokeWidth={3}
-=======
-          {/* 이번주 (실선 — 라이브 Dot 포함, 시인성 대폭 강화) */}
-          <Line
-            type="monotone"
-            dataKey="thisWeek"
-            name="이번주"
             stroke="var(--color-primary)"
             strokeWidth={4}
             connectNulls
->>>>>>> 3617bd1 (feat: 프론트엔드 대시보드 고도화, 차트 분리, UI 깜빡임 개선 등 반영)
             dot={(props) => (
               <LiveDot
                 cx={props.cx}

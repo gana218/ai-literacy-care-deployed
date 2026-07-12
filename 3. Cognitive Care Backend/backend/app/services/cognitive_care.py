@@ -73,7 +73,7 @@ def calculate_focus_score(events: List[Dict[str, Any]], baseline: Dict[str, int]
 
         elif etype == "pause":
             # 무동작이 임계 시간 이상 지속(멍때림·이탈)
-            score -= 18.0
+            score -= 25.0
 
         elif etype == "dwell":
             meta = event.get("metadata") or {}
@@ -85,7 +85,7 @@ def calculate_focus_score(events: List[Dict[str, Any]], baseline: Dict[str, int]
                 dwell_ms = event.get("duration_ms") or 0
             # 한 단락에 지나치게 오래 머무름 = 집중이 흐트러진 정체 상태
             if dwell_ms > 20000:
-                score -= 12.0
+                score -= 15.0
 
         # focus(복귀)·정상 스크롤·적정 dwell 은 감점하지 않음
 

@@ -70,7 +70,7 @@ export default function ReadingPage() {
       switch (command.type) {
         case 'nudge':
           if (command.payload.nudgeLevel) {
-            showNudge(command.payload.nudgeLevel, command.payload.nudgeMessage);
+            showNudge(command.payload.nudgeLevel, command.payload.nudgeMessage, command.payload.summaryText);
           }
           break;
         case 'quiz':

@@ -56,27 +56,39 @@ export const QuizCard: React.FC = () => {
   const { addXp, recordQuizResult } = useScoreStore();
   const { sessionId } = useReadingStore();
 
-  const currentQuiz = useMemo<QuizQuestion>(() => {
+  const currentQuiz = useMemo<QuizQuestion | null>(() => {
     if (activeQuiz) {
-      // correctOption이 숫자형(1-indexed)일 경우와 문자열일 경우 모두 지원
+      // v2 O/X 스펙 지원
+      if (activeQuiz.type === 'ox' || activeQuiz.statement) {
+        return {
+          id: activeQuiz.quizId,
+          question: activeQuiz.statement || '질문이 없습니다.',
+          options: ['O', 'X'],
+          correctIndex: activeQuiz.answer ? 0 : 1, // 'O'는 0번, 'X'는 1번
+          explanation: activeQuiz.explanation || '해설이 없습니다.',
+          xpReward: 30,
+        };
+      }
+      
+      // 구버전(4지선다) 하위 호환
       let correctIdx = 0;
       if (typeof activeQuiz.correctOption === 'number') {
         correctIdx = activeQuiz.correctOption > 0 ? activeQuiz.correctOption - 1 : 0;
-      } else {
+      } else if (activeQuiz.options && typeof activeQuiz.correctOption === 'string') {
         const idx = activeQuiz.options.indexOf(activeQuiz.correctOption);
         if (idx >= 0) correctIdx = idx;
       }
       
       return {
         id: activeQuiz.quizId,
-        question: activeQuiz.question,
-        options: activeQuiz.options,
+        question: activeQuiz.question || '질문이 없습니다.',
+        options: activeQuiz.options || ['O', 'X'],
         correctIndex: correctIdx,
         explanation: activeQuiz.explanation || '정답입니다!',
         xpReward: 30,
       };
     }
-    return MOCK_QUIZZES[0];
+    return null;
   }, [activeQuiz]);
 
   const [phase, setPhase] = useState<QuizPhase>('answering');
@@ -85,7 +97,7 @@ export const QuizCard: React.FC = () => {
 
   // 타이머
   useEffect(() => {
-    if (!isQuizVisible || phase !== 'answering') return;
+    if (!isQuizVisible || phase !== 'answering' || !currentQuiz) return;
     if (timeLeft <= 0) {
       setPhase('incorrect');
       setSelectedIndex(-1); // 시간 초과
@@ -93,7 +105,7 @@ export const QuizCard: React.FC = () => {
     }
     const timer = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
     return () => clearTimeout(timer);
-  }, [isQuizVisible, phase, timeLeft]);
+  }, [isQuizVisible, phase, timeLeft, currentQuiz]);
 
   const handleSelect = useCallback(
     async (index: number) => {
@@ -218,7 +230,7 @@ export const QuizCard: React.FC = () => {
                       이해도 평가
                     </span>
                     <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
-                      정답 시 +{currentQuiz.xpReward} XP
+                      {currentQuiz ? `정답 시 +${currentQuiz.xpReward} XP` : '정답 시 추가 XP 지급'}
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--text-sm)', color: timerColor, fontVariantNumeric: 'tabular-nums', fontWeight: 'var(--weight-semibold)' as unknown as number }}>
@@ -237,11 +249,26 @@ export const QuizCard: React.FC = () => {
                     marginBottom: 'var(--space-5)',
                   }}
                 >
-                  {currentQuiz.question}
+                  {currentQuiz ? currentQuiz.question : "퀴즈를 실시간으로 생성 중입니다..."}
                 </h3>
 
                 {/* 선택지 */}
-                {currentQuiz.options.length === 2 ? (
+                {!currentQuiz ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-6) 0', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', gap: 'var(--space-3)' }}>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      style={{
+                        width: '24px',
+                        height: '24px',
+                        border: '3px solid var(--color-surface-alt)',
+                        borderTop: '3px solid var(--color-primary)',
+                        borderRadius: '50%',
+                      }}
+                    />
+                    잠시만 기다려주세요...
+                  </div>
+                ) : currentQuiz.options.length === 2 ? (
                   /* ── O/X 가로 버튼 모드 ── */
                   <div style={{ display: 'flex', gap: 'var(--space-4)', marginBottom: 'var(--space-5)' }}>
                     {currentQuiz.options.map((option, index) => {

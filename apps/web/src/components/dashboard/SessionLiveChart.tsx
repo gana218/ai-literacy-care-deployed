@@ -112,12 +112,12 @@ export const SessionLiveChart: React.FC<SessionLiveChartProps> = ({
   // 최대 향상폭 계산 (배지/헤더 표시용)
   const maxGap = useMemo(() => {
     if (scoreSeries.length < 2) return 0;
-    return Math.max(...scoreSeries.map((d: ScoreDataPoint) => d.thisWeek - d.lastWeek));
+    return Math.max(...scoreSeries.map((d: ScoreDataPoint) => (d.thisWeek || 0) - (d.lastWeek || 0)));
   }, [scoreSeries]);
 
   const currentScore = scoreSeries.length > 0
-    ? scoreSeries[scoreSeries.length - 1].thisWeek
-    : literacyScore;
+    ? (scoreSeries[scoreSeries.length - 1].thisWeek || 0)
+    : (literacyScore || 0);
 
   return (
     <div>

@@ -63,6 +63,8 @@ def to_intervention_command(state: ReadingSessionState) -> dict[str, Any]:
     if level != "none":
         payload["nudgeLevel"] = level
         payload["nudgeMessage"] = intervention.get("message", "")
+        if "summary_text" in intervention:
+            payload["summaryText"] = intervention["summary_text"]
 
     if front_type == "highlight":
         payload["highlights"] = _highlights(state, intervention)

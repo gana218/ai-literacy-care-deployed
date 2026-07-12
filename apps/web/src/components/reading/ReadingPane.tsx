@@ -137,7 +137,9 @@ export const ReadingPane: React.FC = () => {
     const now = Date.now();
     const deltaY = Math.abs(scrollTop - lastScrollY.current);
     const deltaT = now - lastScrollTime.current; // ms
-    const velocity = deltaT > 0 ? parseFloat((deltaY / deltaT).toFixed(3)) : 0.0;
+    // 장기 미사용 후 스크롤 시 deltaT가 매우 커져 속도가 왜곡되는 것을 방지
+    const effectiveDeltaT = deltaT > 500 ? 100 : deltaT;
+    const velocity = effectiveDeltaT > 0 ? parseFloat((deltaY / effectiveDeltaT).toFixed(3)) : 0.0;
     setScrollVelocity(velocity);
 
     // ── 7/8 REST Events Queue 적재 (150ms 단위 스로틀링 적용) ──
