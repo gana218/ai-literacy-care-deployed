@@ -125,6 +125,9 @@ def to_session_result(state: ReadingSessionState) -> dict[str, Any]:
         # 문해 5대 지표(레이더) + 글 프로필(이독성/난이도) — score.py 산출.
         "literacyDomains": state.get("literacy_domains") or breakdown.get("literacy_domains") or {},
         "textProfile": state.get("text_profile") or breakdown.get("text_profile") or {},
+        # 5번 QA 평가(faithfulness/relevance/passed) — /result에서 run_evaluation_from_state로 실측.
+        # 모듈/입력 부재로 스킵되면 {} (프론트는 없으면 QA 배지 미표시).
+        "qaEvaluation": state.get("qa_evaluation") or {},
     }
 
 

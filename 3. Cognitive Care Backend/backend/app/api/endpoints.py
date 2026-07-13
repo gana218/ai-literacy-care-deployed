@@ -440,7 +440,7 @@ async def get_session_result(session_id: str, db: AsyncSession = Depends(get_db)
         session = result.scalars().first()
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
-            
+
         # Redis에서 먼저 가져오기 (M4 fallback)
         redis_key = f"session:{session_id}:events"
         all_events_raw = await redis_client.lrange(redis_key, 0, -1)
@@ -509,6 +509,23 @@ async def get_session_result(session_id: str, db: AsyncSession = Depends(get_db)
         else:
             # 퀴즈를 아예 안 풀었을 때 기본값 (점수 반영 안 됨)
             initial_state["quiz_result"] = {"correct_count": 0, "total_count": 0}
+
+        # [C2/M1] QA 입력 복원 — /start에서 Redis에 보관한 실제 chunks(원문/요약)·quizzes(진술문)를
+        # state로 되살려 웹 경로에서도 faithfulness/relevance가 실측되게 한다.
+        # (복원 안 하면 raw_text=""·chunks 부재로 QA가 항상 0으로 나옴)
+        # ※ 반드시 run_reading_session 전에 평가 — 이후 content_reducer가 chunks를 스텁으로 덮어씀.
+        chunks_raw = await redis_client.get(f"session:{session_id}:chunks")
+        if chunks_raw:
+            try:
+                initial_state["chunks"] = json.loads(chunks_raw)
+            except Exception:
+                pass
+        quizzes_raw = await redis_client.get(f"session:{session_id}:quizzes")
+        if quizzes_raw:
+            try:
+                initial_state["quizzes"] = json.loads(quizzes_raw)
+            except Exception:
+                pass
 
         # Q4: 5번 QA 품질 게이트 (실패해도 세션 유지)
         try:
