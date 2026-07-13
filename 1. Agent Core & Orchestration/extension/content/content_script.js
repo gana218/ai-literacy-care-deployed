@@ -58,8 +58,13 @@
 
   // 설치별 익명 UUID (ADR-002). 없으면 생성해 storage에 보관, 로그인 없음.
   async function getUserId() {
-    // 1. 만약 우리 서비스 도메인에 있으면, 사이트의 로그인 세션 ID(local_session_uid)를 감지하여 연동
-    if (window.location.hostname.includes("vercel.app") || window.location.hostname.includes("localhost") || window.location.hostname.includes("127.0.0.1")) {
+    // 1. 만약 우리 서비스 도메인(또는 AI 리터러시 웹 앱)에 있으면, 로그인 세션 ID를 감지하여 연동
+    if (
+      window.location.hostname.includes("vercel.app") || 
+      window.location.hostname.includes("localhost") || 
+      window.location.hostname.includes("127.0.0.1") ||
+      (document.title && document.title.includes("AI 리터러시"))
+    ) {
       try {
         const localUid = localStorage.getItem("local_session_uid");
         if (localUid) {

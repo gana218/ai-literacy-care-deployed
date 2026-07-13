@@ -68,7 +68,7 @@ window.ALC_Session = (() => {
       });
       s.tracker.attach();
       s.flushTimer = setInterval(flush, cfg.FLUSH_INTERVAL_MS);
-      console.log("[ALC] 세션 시작:", s.id);
+      console.log("[ALC] 세션 시작 - 세션 ID:", s.id, "유저 ID:", userId);
     }
 
     function enqueue(evt) {
