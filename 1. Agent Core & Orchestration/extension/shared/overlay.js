@@ -34,6 +34,7 @@ window.ALC_Overlay = (() => {
           .toast .tag{display:inline-block;font-size:11px;font-weight:700;
             padding:2px 8px;border-radius:999px;margin-bottom:6px;background:#5b6cff}
           .toast.highlight .tag{background:#00b894}
+          .toast.highlight{bottom:310px}
           .toast.quiz .tag{background:#e17055}
           .badge{position:fixed;right:20px;bottom:20px;padding:8px 12px;
             border-radius:999px;background:#5b6cff;color:#fff;font:600 12px sans-serif;
@@ -58,7 +59,7 @@ window.ALC_Overlay = (() => {
           .quiz-card .q-exp{margin-top:6px;opacity:.85}
           .quiz-card.correct{box-shadow:0 0 0 2px #00b894 inset,0 10px 36px rgba(0,0,0,.3)}
           .quiz-card.wrong{box-shadow:0 0 0 2px #d63031 inset,0 10px 36px rgba(0,0,0,.3)}
-          .dict-card{position:fixed;right:20px;bottom:64px;width:300px;max-width:calc(100vw - 40px);
+          .dict-card{position:fixed;right:20px;bottom:310px;width:300px;max-width:calc(100vw - 40px);
             padding:16px;border-radius:16px;background:#1a1a2e;color:#fff;
             font:14px/1.55 "Pretendard",-apple-system,"Segoe UI",sans-serif;
             box-shadow:0 10px 36px rgba(0,0,0,.3);z-index:2147483647;
