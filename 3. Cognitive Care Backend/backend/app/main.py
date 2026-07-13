@@ -127,7 +127,7 @@ app.include_router(terms.router)
 app.include_router(users.router)
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 async def root():
     # 프론트가 번들돼 있으면 SPA 진입점(index.html)을, 아니면 상태 JSON을 반환
     index_path = os.path.join(_FRONTEND_DIR, "index.html")
@@ -136,7 +136,7 @@ async def root():
     return {"message": "AI Literacy Care Backend is running!", "version": "1.0.0"}
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 async def health_check():
     """헬스체크 엔드포인트."""
     health = {"status": "ok", "db": "unknown", "redis": "unknown"}
