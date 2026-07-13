@@ -48,3 +48,26 @@ chrome.storage.onChanged.addListener((changes, area) => {
   console.log("[ALC] enabled:", changes.enabled.newValue);
   setPdfRedirect(!!changes.enabled.newValue);
 });
+
+// 백엔드 API 요청 프록시 (CORS / CSP 차단 우회용)
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "ALC_API_REQUEST") {
+    const { url, options } = message;
+    fetch(url, options)
+      .then(async (res) => {
+        const ok = res.ok;
+        const status = res.status;
+        const statusText = res.statusText;
+        let data = null;
+        try {
+          data = await res.json();
+        } catch (_) {}
+        sendResponse({ success: true, ok, status, statusText, data });
+      })
+      .catch((err) => {
+        console.error("[ALC Background] Fetch failed:", err);
+        sendResponse({ success: false, error: err.toString() });
+      });
+    return true; // 비동기 응답 채널 유지
+  }
+});

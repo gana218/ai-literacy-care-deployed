@@ -156,7 +156,7 @@
       // 2. 오버레이 알림 띄운 뒤 백엔드 API 요청
       overlay.toast("⏳ 단어 뜻을 분석하는 중...", "highlight");
 
-      const res = await fetch(`${CFG.API_BASE}/api/session/${session.id}/explain`, {
+      const res = await window.ALC_Fetch(`${CFG.API_BASE}/api/session/${session.id}/explain`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ term: text, context }),

@@ -1,12 +1,28 @@
-// 공용 세션/전송 글루 (웹 · PDF 뷰어 공용) — window.ALC_Session
-//
-// tracker(이벤트) + overlay(개입 UI) + REST 전송(ADR-001)을 묶는다.
-// 본문추출(extract)과 진행률(getProgress)만 주입하면 웹·PDF가 동일하게 동작한다.
-//   - 웹:  extract=<p>/Readability, getProgress=scrollY/max, scrollTarget=window
-//   - PDF: extract=pdf.js getTextContent, getProgress=page/total, scrollTarget=뷰어 컨테이너
-//
-// 전송: 이벤트를 큐에 모아 FLUSH_INTERVAL_MS마다(또는 blur/pause 즉시) POST /events →
-//       응답의 개입 명령을 overlay로 렌더. 고정주기 폴링 아님(이벤트 구동).
+// Service Worker를 경유하는 fetch 프록시 함수 (CORS 및 CSP 블록 우회)
+window.ALC_Fetch = async function (url, options = {}) {
+  if (typeof chrome === "undefined" || !chrome.runtime || !chrome.runtime.sendMessage) {
+    return fetch(url, options);
+  }
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({ type: "ALC_API_REQUEST", url, options }, (response) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      if (!response || !response.success) {
+        reject(new Error(response ? response.error : "Unknown API error"));
+        return;
+      }
+      resolve({
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText,
+        json: async () => response.data,
+      });
+    });
+  });
+};
+
 window.ALC_Session = (() => {
   function create({ cfg, userId, extract, getProgress, getReadChunkIndex, overlay, scrollTarget = window }) {
     const s = { id: null, queue: [], flushTimer: null, tracker: null, started: false };
@@ -21,7 +37,7 @@ window.ALC_Session = (() => {
         // 서버 연결 시작 알림 (Render 무료 서버의 30초 대기 시간 대응)
         overlay.toast("⏳ AI 케어 서버에 연결하는 중...", "highlight");
 
-        const res = await fetch(`${cfg.API_BASE}/api/session/start`, {
+        const res = await window.ALC_Fetch(`${cfg.API_BASE}/api/session/start`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -67,7 +83,7 @@ window.ALC_Session = (() => {
       if (!s.id || s.queue.length === 0) return;
       const events = s.queue.splice(0, s.queue.length);
       try {
-        const res = await fetch(`${cfg.API_BASE}/api/session/${s.id}/events`, {
+        const res = await window.ALC_Fetch(`${cfg.API_BASE}/api/session/${s.id}/events`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ session_id: s.id, events }),
@@ -109,7 +125,7 @@ window.ALC_Session = (() => {
     // overlay.quiz의 onAnswer 콜백으로 넘겨져 결과·해설 렌더에 쓰인다.
     async function submitQuiz(quizId, selectedOption) {
       if (!s.id) return null;
-      const res = await fetch(`${cfg.API_BASE}/api/session/${s.id}/quiz/submit`, {
+      const res = await window.ALC_Fetch(`${cfg.API_BASE}/api/session/${s.id}/quiz/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quizId, selectedOption }),
@@ -126,7 +142,7 @@ window.ALC_Session = (() => {
       if (s.id) {
         // 세션 종료 → 최종 결과 계산(성장 그래프용). 대시보드 기록은 후속.
         try {
-          await fetch(`${cfg.API_BASE}/api/session/${s.id}/result`);
+          await window.ALC_Fetch(`${cfg.API_BASE}/api/session/${s.id}/result`);
         } catch (_) {}
       }
       if (window.ALC_Debug) window.ALC_Debug.reset();
