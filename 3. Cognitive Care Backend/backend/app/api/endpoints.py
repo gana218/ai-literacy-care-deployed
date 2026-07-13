@@ -65,13 +65,6 @@ from ..services.quiz_service import select_quiz_for_state, generate_ox_quiz
 router = APIRouter(prefix="/api/session", tags=["Sessions"])
 
 
-@router.get("/debug")
-async def debug_types():
-    from ..models.models import ReadingEvent
-    return {
-        "type": str(ReadingEvent.timestamp_ms.type),
-        "module": ReadingEvent.__module__
-    }
 
 @router.post("/start", response_model=SessionStartResponse)
 async def start_session(req: SessionStartRequest, request: Request, db: AsyncSession = Depends(get_db)):
