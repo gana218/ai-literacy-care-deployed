@@ -22,7 +22,8 @@ def _call_llm_via_snowchat(model: str, prompt: str, system_instruction: str | No
     # Google 공식 API 키 감지 시 직접 호출 (AIzaSy로 시작하는 경우)
     if api_key.startswith("AIzaSy"):
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            # Google 공식 API에는 gemini-2.5-flash 모델이 없으므로 표준 gemini-1.5-flash를 사용합니다.
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}]
             }
@@ -36,7 +37,8 @@ def _call_llm_via_snowchat(model: str, prompt: str, system_instruction: str | No
                 method="POST"
             )
             with urllib.request.urlopen(req, timeout=15) as response:
-                res_data = json.loads(response.read().decode("utf-8"))
+                res_content = response.read().decode("utf-8")
+                res_data = json.loads(res_content)
                 candidates = res_data.get("candidates", [])
                 if candidates:
                     content = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
