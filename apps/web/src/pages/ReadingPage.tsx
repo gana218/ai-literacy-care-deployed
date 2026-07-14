@@ -98,6 +98,33 @@ export default function ReadingPage() {
     }
   }, [progress, sessionId]);
 
+  // 7/14: 컴포넌트 언마운트(페이지 이탈) 시 세션 최종 저장 (완독 전에 페이지를 나갈 때도 데이터가 누실되지 않게 처리)
+  useEffect(() => {
+    return () => {
+      const currentScores = useScoreStore.getState();
+      const sId = useReadingStore.getState().sessionId;
+      const finalized = useScoreStore.getState().isFinalized;
+      
+      if (sId && !finalized) {
+        console.log('[ReadingPage] Page unmounting. Auto-finalizing session...');
+        // 남아있는 이벤트 큐가 있다면 최신 상태 전송
+        const remainingQueue = useReadingStore.getState().eventQueue;
+        if (remainingQueue.length > 0) {
+          api.sendEvents(sId, remainingQueue).catch(() => {});
+          useReadingStore.getState().clearQueue();
+        }
+        
+        api.finishSession(sId, {
+          literacy_score: currentScores.literacyScore,
+          comprehension_score: currentScores.comprehensionScore,
+          engagement_score: currentScores.engagementScore,
+        }).catch((err) => {
+          console.error('[ReadingPage] Failed to auto-finalize session on unmount:', err);
+        });
+      }
+    };
+  }, []);
+
   // 7/8: 실시간 REST /events 배치 폴링 & 개입 커맨드 처리 (WebSocket 제거)
   useEffect(() => {
     let active = true;
