@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Brain, User, ClipboardList, Timer, Lightbulb, Rocket, Book, BookOpen, Flag, BarChart2, AlertCircle, Target, CheckCircle2 } from 'lucide-react';
+import { Brain, User, ClipboardList, Timer, Lightbulb, Rocket, Book, BookOpen, BarChart2, AlertCircle, Target, CheckCircle2 } from 'lucide-react';
 import { useSessionConfig } from '../stores/sessionConfigStore';
 import { Button } from '../components/common/Button';
 import { useAuthStore } from '../stores/authStore';

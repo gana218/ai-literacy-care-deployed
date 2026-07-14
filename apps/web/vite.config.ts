@@ -15,10 +15,16 @@ export default defineConfig({
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          charts: ['recharts'],
-          ui: ['framer-motion', 'lucide-react', 'zustand'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('recharts')) {
+              return 'charts';
+            }
+            if (id.includes('framer-motion') || id.includes('lucide-react') || id.includes('zustand')) {
+              return 'ui';
+            }
+            return 'vendor';
+          }
         },
       },
     },

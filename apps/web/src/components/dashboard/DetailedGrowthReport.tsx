@@ -16,7 +16,7 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
-import { Search, Trash2, X, AlertCircle, BookOpen, Activity } from 'lucide-react';
+import { Search, Trash2, X, AlertCircle, BookOpen } from 'lucide-react';
 import { Card } from '../common/Card';
 import { api, type GrowthReportResponse } from '../../lib/api';
 import { useSessionConfig } from '../../stores/sessionConfigStore';
