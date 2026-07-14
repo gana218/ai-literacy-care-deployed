@@ -666,6 +666,14 @@ async def explain_term(
         t = lookup_term(term, req.context)
         explanation = t["definition"]
         source = t["source"]
+        
+        # 단어 뜻 조회 실패 시, 디버깅을 위해 에러 내역 및 시도 항목 상세 리턴
+        if source == "not_found":
+            meta = t.get("_meta", {})
+            tried_str = ", ".join(meta.get("tried", []))
+            errors_str = ", ".join([f"{k}: {v}" for k, v in meta.get("errors", {}).items()])
+            explanation = f"뜻을 분석하지 못했습니다.\n[시도된 항목]: {tried_str}\n[에러 로그]: {errors_str or '없음'}"
+            source = "Debug Info"
     except Exception as e:
         explanation = f"'{term}'에 대한 사전 뜻을 찾을 수 없습니다. ({str(e)})"
         source = "Local Fallback"
