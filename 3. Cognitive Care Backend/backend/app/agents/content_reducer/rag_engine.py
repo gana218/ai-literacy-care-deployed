@@ -722,15 +722,7 @@ def lookup_term(word: str, context: str | None = None) -> TermDict:
     if cleaned_word != word_clean:
         word_candidates.append(cleaned_word)
 
-    if not _TERM_DICT:
-        return TermDict(
-            term=cleaned_word,
-            definition="",
-            source="not_found",
-            faithfulness_score=0.0,
-            chunk_id="",
-            _meta={"tried": tried, "errors": errors}
-        )
+
 
     # 1. 표준국어대사전 오픈 API 조회 시도
     api_key_stdict = os.getenv("STDICT_API_KEY", "") or os.getenv("STANDARD_DICTIONARY_API_KEY", "")

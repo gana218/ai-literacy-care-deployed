@@ -136,6 +136,12 @@ export default function ReadingPage() {
     let active = true;
     let flushIntervalId: any = null;
     let currentSessionId: string | null = null;
+    // 7/15: flush 응답 순번(sequence) 관리. 동시 요청은 허용하되(느린 첫 요청이 나머지를
+    // 막지 않도록), 백엔드가 매 요청을 events[-40:]로 재계산해 생기는 응답 순서 역전은
+    // "가장 최근에 보낸 요청의 응답만 반영"으로 무시한다. (블로킹 가드는 콜드스타트로 첫
+    // 요청이 수초 걸리면 그동안 모든 flush를 막아 집중도가 100에 얼어붙는 부작용이 있었다.)
+    let flushSeq = 0;
+    let appliedSeq = 0;
 
     // 개입 명령 처리 핸들러 (Intervention Command → UI)
     const handleInterventionCommand = (command: any) => {
@@ -216,13 +222,17 @@ export default function ReadingPage() {
       const currentQueue = useReadingStore.getState().eventQueue;
       if (!active || !currentSessionId || currentQueue.length === 0) return;
 
+      const mySeq = ++flushSeq;
       // 큐 선점 비우기
       const eventsToSend = [...currentQueue];
       clearQueue();
 
       try {
         const cmd = await api.sendEvents(currentSessionId, eventsToSend);
-        if (active) {
+        // 7/15: 이 응답보다 더 나중에 보낸 요청의 응답이 이미 반영됐다면(순서 역전) 무시한다.
+        // 백엔드가 events[-40:]로 재계산하므로 나중에 보낸 요청일수록 더 최신 상태다.
+        if (active && mySeq > appliedSeq) {
+          appliedSeq = mySeq;
           handleInterventionCommand(cmd);
         }
       } catch (err) {
@@ -245,6 +255,19 @@ export default function ReadingPage() {
         const loggedInUser = useAuthStore.getState().user;
         const activeUserId = loggedInUser?.id || cfg.userId || 'u_anon_guest';
 
+        // 7/15: 업로드 세션이면 백엔드 응답(재청킹)을 기다리는 동안 데모(sampleArticle)가
+        // 잠깐이라도 보이지 않도록, 저장된 원문을 즉시 렌더한다. (응답이 오면 아래에서 정교화)
+        if (isUpload && cfg.uploadedContent && cfg.uploadedContent.length) {
+          useReadingStore.getState().setArticle({
+            id: 'uploaded',
+            title: cfg.uploadedTitle ?? '내가 올린 문서',
+            category: '내 업로드',
+            author: '익명 업로드',
+            publishedAt: '방금',
+            content: cfg.uploadedContent,
+          });
+        }
+
         const sessionData = await api.startSession({
           articleId: isUpload ? 'uploaded' : 'default-article',
           userId: activeUserId,
@@ -262,17 +285,21 @@ export default function ReadingPage() {
         // → 리더의 '쉬운 문장 보기' 토글이 업로드한 문서에도 작동
         if (isUpload) {
           const chunks: any[] = (sessionData.article as any)?.chunks ?? [];
-          const originals = chunks.map((c: any) => c.original_text).filter(Boolean);
-          const easies = chunks.map((c: any) => c.restructured_text || c.original_text);
-          if (originals.length) {
+          const originals = chunks.map((c: any) => c.original_text || c.originalText).filter(Boolean);
+          const easies = chunks.map((c: any) => c.restructured_text || c.restructuredText || c.original_text || c.originalText);
+          // 7/15: 백엔드가 chunks를 못 주거나(콜드스타트·실패·mock 폴백) 응답이 비어도
+          // 데모(sampleArticle)로 떨어지지 않도록, localStorage에 영속된 업로드 원문으로 폴백한다.
+          // "새로고침하면 업로드가 데모로 돌아가던" 문제의 최종 방어선.
+          const content = originals.length ? originals : (cfg.uploadedContent ?? []);
+          if (content.length) {
             useReadingStore.getState().setArticle({
               id: sessionData.article.id ?? 'uploaded',
               title: cfg.uploadedTitle ?? '내가 올린 문서',
               category: '내 업로드',
               author: '익명 업로드',
               publishedAt: '방금',
-              content: originals,
-              contentEasy: easies,
+              content,
+              contentEasy: originals.length ? easies : content,
             });
           }
         }
@@ -308,12 +335,15 @@ export default function ReadingPage() {
 
     initSession();
 
-    // 큐 변경 실시간 감시 (blur 또는 dwell 이입 시 즉시 flush)
+    // 큐 변경 실시간 감시 (blur·focus 이입 시에만 즉시 flush)
+    // 7/15: 'dwell'을 즉시-flush 트리거에서 제거. dwell은 스크롤 중 IntersectionObserver로
+    // 초당 수차례 발생해 flush 폭주(수백 요청/초)를 일으켜 응답 순서 역전의 원인이었다.
+    // dwell 감점은 1.5초 인터벌 flush로 충분히 반영된다. blur/focus(탭 전환)만 즉시 처리.
     const unsubscribeQueue = useReadingStore.subscribe((state) => {
       const queue = state.eventQueue;
       if (queue.length > 0) {
         const lastEvent = queue[queue.length - 1];
-        if (lastEvent.type === 'blur' || lastEvent.type === 'dwell') {
+        if (lastEvent.type === 'blur' || lastEvent.type === 'focus') {
           flushQueue();
         }
       }

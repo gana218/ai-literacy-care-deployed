@@ -61,7 +61,7 @@ def _update_user_scroll_baseline(user, state_events: list, difficulty_score: flo
     except (TypeError, ValueError):
         nb["n_sessions"] = 1
     user.scroll_baseline = nb
-from ..services.quiz_service import select_quiz_for_state, generate_ox_quiz
+from ..services.quiz_service import select_quiz_for_state, generate_ox_quiz, normalize_quizzes
 
 router = APIRouter(prefix="/api/session", tags=["Sessions"])
 
@@ -259,7 +259,7 @@ async def process_events(session_id: str, req: EventsRequestModel):
             finish_quiz_shown_raw = await redis_client.get(f"session:{session_id}:finish_quiz_shown")
             
             if quizzes_raw and chunks_raw:
-                state["quizzes"] = json.loads(quizzes_raw)
+                state["quizzes"] = normalize_quizzes(quizzes_raw)
                 state["chunks"] = json.loads(chunks_raw)
                 state["asked_quiz_ids"] = json.loads(asked_raw) if asked_raw else []
                 
@@ -337,8 +337,10 @@ async def submit_quiz(session_id: str, req: QuizSubmitRequest, db: AsyncSession 
     if not quizzes_raw:
         raise HTTPException(status_code=404, detail="No quizzes found for session")
 
-    quizzes = json.loads(quizzes_raw)
-    target_quiz = next((q for q in quizzes.values() if q["quizId"] == req.quizId), None)
+    quizzes = normalize_quizzes(quizzes_raw)
+    quiz_list = list(quizzes.values())
+
+    target_quiz = next((q for q in quiz_list if q["quizId"] == req.quizId), None)
     if not target_quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
 
@@ -595,7 +597,7 @@ async def get_session_result(session_id: str, db: AsyncSession = Depends(get_db)
         quizzes_raw = await redis_client.get(f"session:{session_id}:quizzes")
         if quizzes_raw:
             try:
-                initial_state["quizzes"] = json.loads(quizzes_raw)
+                initial_state["quizzes"] = normalize_quizzes(quizzes_raw)
             except Exception:
                 pass
 
@@ -666,6 +668,14 @@ async def explain_term(
         t = lookup_term(term, req.context)
         explanation = t["definition"]
         source = t["source"]
+        
+        # 단어 뜻 조회 실패 시, 디버깅을 위해 에러 내역 및 시도 항목 상세 리턴
+        if source == "not_found":
+            meta = t.get("_meta", {})
+            tried_str = ", ".join(meta.get("tried", []))
+            errors_str = ", ".join([f"{k}: {v}" for k, v in meta.get("errors", {}).items()])
+            explanation = f"뜻을 분석하지 못했습니다.\n[시도된 항목]: {tried_str}\n[에러 로그]: {errors_str or '없음'}"
+            source = "Debug Info"
     except Exception as e:
         explanation = f"'{term}'에 대한 사전 뜻을 찾을 수 없습니다. ({str(e)})"
         source = "Local Fallback"
@@ -694,6 +704,14 @@ async def explain_term(
 @router.post("/reset")
 async def reset_demo_data(db: AsyncSession = Depends(get_db)):
     """전체 데이터베이스 및 Redis 세션 데이터를 완전 초기화하여 시연 리허설 반복 실행을 보장함 (7/13, 7/14)"""
+    import os
+    # 7/15: drop_all은 전 테이블(모든 사용자·세션·퀴즈)을 삭제하는 파괴적 작업이라,
+    # 실수 호출로 실데이터가 날아가지 않도록 명시적 환경변수 플래그로 가드한다.
+    if os.getenv("ALLOW_DESTRUCTIVE_RESET") != "1":
+        raise HTTPException(
+            status_code=403,
+            detail="Destructive reset is disabled. Set ALLOW_DESTRUCTIVE_RESET=1 to enable.",
+        )
     from ..core.db import engine
     from ..models.models import Base
     

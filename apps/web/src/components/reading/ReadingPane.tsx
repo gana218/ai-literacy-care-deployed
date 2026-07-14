@@ -168,8 +168,14 @@ export const ReadingPane: React.FC = () => {
   }, [setProgress, setScrollVelocity, sessionId, enqueueEvent]);
 
   // ── 탭 포커스 이탈 감지 ──
+  // 7/15: window 'blur'와 visibilitychange(hidden)가 탭 전환 시 동시에 발생해
+  // 이탈이 2회씩 카운트되던 버그 수정. away 플래그로 "이탈↔복귀" 전이를 1회만 반영한다.
   useEffect(() => {
-    const onBlur = () => {
+    let away = false;
+
+    const goAway = () => {
+      if (away) return;
+      away = true;
       incrementGazeOut();
       if (sessionId) {
         enqueueEvent({
@@ -178,8 +184,10 @@ export const ReadingPane: React.FC = () => {
         });
       }
     };
-    
-    const onFocus = () => {
+
+    const comeBack = () => {
+      if (!away) return;
+      away = false;
       if (sessionId) {
         enqueueEvent({
           type: 'focus',
@@ -190,18 +198,18 @@ export const ReadingPane: React.FC = () => {
 
     const onVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        onBlur();
+        goAway();
       } else {
-        onFocus();
+        comeBack();
       }
     };
 
-    window.addEventListener('blur', onBlur);
-    window.addEventListener('focus', onFocus);
+    window.addEventListener('blur', goAway);
+    window.addEventListener('focus', comeBack);
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
-      window.removeEventListener('blur', onBlur);
-      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', goAway);
+      window.removeEventListener('focus', comeBack);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [incrementGazeOut, sessionId, enqueueEvent]);
