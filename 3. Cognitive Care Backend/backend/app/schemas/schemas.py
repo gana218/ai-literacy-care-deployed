@@ -43,7 +43,7 @@ class EventItem(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     type: str
-    timestamp_ms: int
+    timestamp_ms: Optional[int] = None
     duration_ms: Optional[int] = None
     position: Optional[float] = None
 

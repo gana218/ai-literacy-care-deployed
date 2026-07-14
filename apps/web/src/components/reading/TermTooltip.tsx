@@ -50,12 +50,12 @@ export const TermTooltip: React.FC<TermTooltipProps> = ({
       const cachedDef = termDefinitions[term];
       setAiDefinition(cachedDef);
       
-      // 사용자 드래그/클릭으로 툴팁을 명시적으로 연 경우에만 단어장에 기록
       if (isOpen && sessionId) {
         enqueueEvent({
           type: 'lookup',
           sessionId: sessionId,
           timestamp: Date.now(),
+          timestamp_ms: Date.now(),
           payload: {
             term: term,
             definition: cachedDef,
@@ -82,6 +82,7 @@ export const TermTooltip: React.FC<TermTooltipProps> = ({
               type: 'lookup',
               sessionId: sessionId,
               timestamp: Date.now(),
+              timestamp_ms: Date.now(),
               payload: {
                 term: term,
                 definition: res.explanation,

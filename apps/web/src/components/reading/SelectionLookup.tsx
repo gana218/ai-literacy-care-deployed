@@ -81,6 +81,7 @@ export default function SelectionLookup() {
         type: 'lookup',
         sessionId: sessionId || '',
         timestamp: Date.now(),
+        timestamp_ms: Date.now(),
         payload: {
           term: sel.text,
           definition: cached,
@@ -101,6 +102,7 @@ export default function SelectionLookup() {
           type: 'lookup',
           sessionId: sessionId || '',
           timestamp: Date.now(),
+          timestamp_ms: Date.now(),
           payload: {
             term: sel.text,
             definition: res.explanation,
