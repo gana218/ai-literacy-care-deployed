@@ -81,12 +81,18 @@ def summarize_chunks(
     profile: dict,
 ) -> list[dict]:
     """
-    청크 목록을 돌며 각 청크에 'summary' 필드를 생성하여 주입한다.
+    청크 목록을 돌며 각 청크에 'summary' 필드를 생성하여 주입한다. (병렬 실행 최적화)
     """
+    import concurrent.futures
     user_literacy_level = int(profile.get("user_literacy_level", 3))
 
-    for chunk in chunks:
+    def process_chunk(chunk):
         original = chunk.get("original_text", "")
         chunk["summary"] = summarize_chunk(original, user_literacy_level)
+        return chunk
+
+    # 문단별 LLM 요약을 병렬로 처리하여 레이턴시를 획기적으로 단축 (30초 타임아웃 방지)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(12, len(chunks) or 1)) as executor:
+        list(executor.map(process_chunk, chunks))
 
     return chunks
