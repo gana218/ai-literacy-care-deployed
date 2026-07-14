@@ -119,6 +119,17 @@ export const QuizCard: React.FC = () => {
     <AnimatePresence>
       {isQuizVisible && (
         <>
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 'var(--z-quiz)' as unknown as number,
+            padding: '24px 16px', // 여유 패딩 추가
+          }}
+        >
           <motion.div
             key="quiz-overlay"
             initial={{ opacity: 0 }}
@@ -127,11 +138,11 @@ export const QuizCard: React.FC = () => {
             transition={{ duration: 0.25 }}
             onClick={phase !== 'answering' ? handleClose : undefined}
             style={{
-              position: 'fixed',
+              position: 'absolute',
               inset: 0,
               backgroundColor: 'rgba(42,39,36,0.4)',
               backdropFilter: 'blur(4px)',
-              zIndex: 'calc(var(--z-quiz) - 1)' as unknown as number,
+              zIndex: -1,
             }}
           />
 
@@ -142,14 +153,9 @@ export const QuizCard: React.FC = () => {
             exit={{ opacity: 0, scale: 0.92, y: 16 }}
             transition={{ duration: 0.32, ease: [0.34, 1.56, 0.64, 1] }}
             style={{
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
               width: '100%',
               maxWidth: '520px',
-              zIndex: 'var(--z-quiz)' as unknown as number,
-              padding: '0 16px',
+              zIndex: 1,
             }}
           >
             <div
@@ -367,6 +373,7 @@ export const QuizCard: React.FC = () => {
               </div>
             </div>
           </motion.div>
+        </div>
         </>
       )}
     </AnimatePresence>

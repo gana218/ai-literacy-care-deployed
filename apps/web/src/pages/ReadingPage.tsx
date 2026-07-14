@@ -10,6 +10,7 @@ import { useReadingStore } from '../stores/readingStore';
 import { useScoreEngine } from '../lib/useScoreEngine';
 import { useFocusStore } from '../stores/focusStore';
 import { useScoreStore } from '../stores/scoreStore';
+import { useAuthStore } from '../stores/authStore';
 import { api } from '../lib/api';
 
 /**
@@ -207,9 +208,12 @@ export default function ReadingPage() {
         const isUpload =
           cfg.mode === 'upload' && !!cfg.uploadedContent && cfg.uploadedContent.length > 0;
 
+        const loggedInUser = useAuthStore.getState().user;
+        const activeUserId = loggedInUser?.id || cfg.userId || 'u_anon_guest';
+
         const sessionData = await api.startSession({
           articleId: isUpload ? 'uploaded' : 'default-article',
-          userId: cfg.userId ?? 'u_anon_guest',
+          userId: activeUserId,
           content: isUpload ? cfg.uploadedContent! : undefined,
           baselineScrollSpeed: cfg.baselineScrollSpeed ?? undefined,
         });
