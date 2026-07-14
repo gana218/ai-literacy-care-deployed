@@ -136,11 +136,12 @@ export default function ReadingPage() {
     let active = true;
     let flushIntervalId: any = null;
     let currentSessionId: string | null = null;
-    // 7/15: flush 직렬화 플래그. 예전엔 dwell/blur마다 즉시 flush가 겹쳐 수백 개 /events가
-    // 동시 전송되고, 백엔드는 매 요청을 events[-40:]로 재계산하므로 오래된(높은 focus) 응답이
-    // 늦게 도착해 최신 낮은 값을 덮어써 집중도가 튀거나(44 근처) 100에 머무는 버그가 있었다.
-    // 한 번에 하나만 전송해 응답 순서 역전을 없앤다.
-    let flushing = false;
+    // 7/15: flush 응답 순번(sequence) 관리. 동시 요청은 허용하되(느린 첫 요청이 나머지를
+    // 막지 않도록), 백엔드가 매 요청을 events[-40:]로 재계산해 생기는 응답 순서 역전은
+    // "가장 최근에 보낸 요청의 응답만 반영"으로 무시한다. (블로킹 가드는 콜드스타트로 첫
+    // 요청이 수초 걸리면 그동안 모든 flush를 막아 집중도가 100에 얼어붙는 부작용이 있었다.)
+    let flushSeq = 0;
+    let appliedSeq = 0;
 
     // 개입 명령 처리 핸들러 (Intervention Command → UI)
     const handleInterventionCommand = (command: any) => {
@@ -217,28 +218,27 @@ export default function ReadingPage() {
 
     // 큐에 있는 이벤트를 서버로 Flush 전송
     const flushQueue = async () => {
-      // 7/15: 이미 전송 중이면 스킵(직렬화). 동시 요청이 겹쳐 응답이 순서 역전되던 것 방지.
-      if (flushing) return;
       // 컴포넌트 마운트 해제 또는 세션 ID가 없을 경우 전송하지 않음
       const currentQueue = useReadingStore.getState().eventQueue;
       if (!active || !currentSessionId || currentQueue.length === 0) return;
 
-      flushing = true;
+      const mySeq = ++flushSeq;
       // 큐 선점 비우기
       const eventsToSend = [...currentQueue];
       clearQueue();
 
       try {
         const cmd = await api.sendEvents(currentSessionId, eventsToSend);
-        if (active) {
+        // 7/15: 이 응답보다 더 나중에 보낸 요청의 응답이 이미 반영됐다면(순서 역전) 무시한다.
+        // 백엔드가 events[-40:]로 재계산하므로 나중에 보낸 요청일수록 더 최신 상태다.
+        if (active && mySeq > appliedSeq) {
+          appliedSeq = mySeq;
           handleInterventionCommand(cmd);
         }
       } catch (err) {
         console.warn('[ReadingPage] Failed to send events, keeping in queue:', err);
         // 실패 시 큐에 다시 넣기 (순서 보장 위해 앞쪽에 넣는 것이 이상적이나, 간단히 다시 enqueue)
         eventsToSend.forEach(e => useReadingStore.getState().enqueueEvent(e));
-      } finally {
-        flushing = false;
       }
     };
 

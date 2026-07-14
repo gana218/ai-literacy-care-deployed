@@ -80,12 +80,12 @@ window.ALC_Session = (() => {
     }
 
     async function flush() {
-      // 7/15: flush 직렬화. 인터벌 flush와 blur/pause 즉시 flush가 겹쳐 동시 요청이 나가면,
-      // 백엔드가 매 요청을 events[-40:]로 재계산하므로 오래된 응답이 늦게 도착해 최신 집중도를
-      // 덮어써 값이 튀거나 특정 값(예: 44)에 갇히던 문제를 막는다. 한 번에 하나만 전송한다.
-      if (s.flushing) return;
       if (!s.id || s.queue.length === 0) return;
-      s.flushing = true;
+      // 7/15: 응답 순번 관리. 인터벌 flush와 blur/pause 즉시 flush가 겹쳐 동시 요청이 나가면,
+      // 백엔드가 매 요청을 events[-40:]로 재계산해 오래된 응답이 늦게 도착, 최신 집중도를 덮어써
+      // 값이 튀거나 특정 값(예: 44)에 갇힌다. "가장 최근에 보낸 요청의 응답만 반영"해 역전을 막되,
+      // 블로킹은 하지 않는다(콜드스타트로 첫 요청이 느려도 이후 flush가 막히지 않게).
+      const mySeq = (s.flushSeq = (s.flushSeq || 0) + 1);
       const events = s.queue.splice(0, s.queue.length);
       try {
         const res = await window.ALC_Fetch(`${cfg.API_BASE}/api/session/${s.id}/events`, {
@@ -93,7 +93,11 @@ window.ALC_Session = (() => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ session_id: s.id, events }),
         });
-        render(await res.json());
+        const cmd = await res.json();
+        if (mySeq > (s.appliedSeq || 0)) {
+          s.appliedSeq = mySeq;
+          render(cmd);
+        }
       } catch (e) {
         const msg = e.message || String(e);
         if (msg.includes("message channel closed") || msg.includes("context invalidated")) {
@@ -102,8 +106,6 @@ window.ALC_Session = (() => {
         } else {
           console.warn("[ALC] 이벤트 전송 실패:", e);
         }
-      } finally {
-        s.flushing = false;
       }
     }
 

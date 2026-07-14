@@ -132,12 +132,14 @@ def calculate_focus_score(events: List[Dict[str, Any]], baseline: Dict[str, Any]
 
         elif etype == "scroll":
             velocity = _scroll_velocity(event)
-            # 내 속도 + 1.0 px/ms 초과 = 스키밍 → 즉시 감점.
-            # 7/15: 임계값 아래 정상 스크롤의 +2 회복은 제거한다(스크롤 이벤트가 많아
-            # 감점을 즉시 상쇄하며 100점에 포화되던 원인). 회복은 감점 이벤트가 최근
-            # 창(recent) 밖으로 밀려나면서 자연스럽게 이루어진다.
+            # 임계값(개인 속도, 상한 2.5) 초과 = 스키밍 → 감점.
+            # 7/15: 정상 속도로 읽는 스크롤은 +2로 점진 회복시킨다. 임계값 상한(2.5)이 있어
+            #       빠른 스크롤은 회복 경로로 안 새고 확실히 감점되므로, 회복이 스키밍을 가리지
+            #       않는다. (회복이 아예 없으면 한 번 0으로 떨어진 뒤 다시 안 올라오던 문제 해결)
             if velocity > scroll_threshold:
                 score -= 8.0
+            elif velocity > 0.05:
+                score = min(100.0, score + 2.0)
 
         elif etype == "pause":
             score -= 2.0
