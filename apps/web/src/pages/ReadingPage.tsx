@@ -262,8 +262,8 @@ export default function ReadingPage() {
         // → 리더의 '쉬운 문장 보기' 토글이 업로드한 문서에도 작동
         if (isUpload) {
           const chunks: any[] = (sessionData.article as any)?.chunks ?? [];
-          const originals = chunks.map((c: any) => c.original_text).filter(Boolean);
-          const easies = chunks.map((c: any) => c.restructured_text || c.original_text);
+          const originals = chunks.map((c: any) => c.original_text || c.originalText).filter(Boolean);
+          const easies = chunks.map((c: any) => c.restructured_text || c.restructuredText || c.original_text || c.originalText);
           if (originals.length) {
             useReadingStore.getState().setArticle({
               id: sessionData.article.id ?? 'uploaded',
