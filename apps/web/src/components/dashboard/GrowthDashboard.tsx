@@ -7,17 +7,27 @@ import { TrendingUp } from 'lucide-react';
 import LiteracyScoreChart from './LiteracyScoreChart';
 import { useScoreStore } from '../../stores/scoreStore';
 
-export const GrowthDashboard: React.FC = React.memo(() => {
-  const literacyScore = useScoreStore((s) => s.literacyScore);
-  const comprehensionScore = useScoreStore((s) => s.comprehensionScore);
-  const engagementScore = useScoreStore((s) => s.engagementScore);
+export interface GrowthDashboardProps {
+  dbData?: any;
+}
+
+export const GrowthDashboard: React.FC<GrowthDashboardProps> = React.memo(({ dbData }) => {
+  const localLiteracy = useScoreStore((s) => s.literacyScore);
+  const localComprehension = useScoreStore((s) => s.comprehensionScore);
+  const localEngagement = useScoreStore((s) => s.engagementScore);
   const scoreSeries = useScoreStore((s) => s.scoreSeries);
 
-  // 케어 전후 최대 델타 계산
-  const maxDelta =
-    scoreSeries.length >= 2
-      ? Math.max(...scoreSeries.map((d) => (d.after || 0) - (d.before || 0)))
-      : 0;
+  const displayLiteracy = dbData?.averageLiteracyScore || localLiteracy || 0;
+  const displayComprehension = dbData?.averageComprehensionScore || localComprehension || 0;
+  const displayEngagement = dbData?.averageFocusScore || localEngagement || 0;
+
+  // 케어 전후 최대 델타 계산: DB 데이터가 있으면 DB의 radarData 전후 차이로도 계산 가능
+  let maxDelta = 0;
+  if (dbData?.weekly?.radarData) {
+    maxDelta = Math.max(...dbData.weekly.radarData.map((d: any) => (d.after || 0) - (d.before || 0)), 0);
+  } else if (scoreSeries.length >= 2) {
+    maxDelta = Math.max(...scoreSeries.map((d) => (d.after || 0) - (d.before || 0)), 0);
+  }
 
   return (
     <div
@@ -72,18 +82,18 @@ export const GrowthDashboard: React.FC = React.memo(() => {
       >
         <MetricChip
           label="리터러시 점수"
-          value={`${literacyScore}점`}
+          value={`${displayLiteracy}점`}
           color="var(--color-primary)"
-          delta={`+${maxDelta}점 향상`}
+          delta={maxDelta > 0 ? `+${maxDelta.toFixed(1)}점 향상` : undefined}
         />
         <MetricChip
           label="이해도"
-          value={`${comprehensionScore}점`}
+          value={`${displayComprehension}점`}
           color="var(--color-comprehension)"
         />
         <MetricChip
           label="집중도"
-          value={`${engagementScore}점`}
+          value={`${displayEngagement}점`}
           color="var(--color-engagement)"
         />
       </div>

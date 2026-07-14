@@ -383,18 +383,47 @@ async def get_user_growth(user_id: str, db: AsyncSession = Depends(get_db)):
         except Exception as e:
             print(f"LLM call failed: {e}")
 
+    # M1-2. 주간 리터러시 점수 추이 (주간 비교 차트용)
+    weekly_score_series = []
+    if sessions:
+        for idx, day_name in enumerate(weekday_names):
+            day_sessions = [s for s in sessions if s.created_at and s.created_at.weekday() == idx]
+            active_day_sessions = [s for s in day_sessions if s.id != first_session.id]
+            
+            this_week_val = None
+            if active_day_sessions:
+                this_week_val = round(sum((s.literacy_score or 50.0) for s in active_day_sessions) / len(active_day_sessions), 1)
+            elif day_sessions and len(sessions) == 1:
+                this_week_val = round(first_session.literacy_score or 50.0, 1)
+                
+            last_week_val = round(before_lit, 1)
+            weekly_score_series.append({
+                "label": day_name,
+                "thisWeek": this_week_val,
+                "lastWeek": last_week_val
+            })
+    else:
+        for day_name in weekday_names:
+            weekly_score_series.append({
+                "label": day_name,
+                "thisWeek": None,
+                "lastWeek": None
+            })
+
     report = {
         "weekly": {
             "radarData": radar_data,
             "activityData": activity_data_weekly,
             "words": words_data,
-            "prescription": prescription_html
+            "prescription": prescription_html,
+            "weeklyScoreSeries": weekly_score_series
         },
         "monthly": {
             "radarData": radar_data,
             "activityData": activity_data_weekly,
             "words": words_data,
-            "prescription": prescription_html
+            "prescription": prescription_html,
+            "weeklyScoreSeries": weekly_score_series
         },
         "totalXp": total_xp,
         "level": total_xp // 100 + 1,

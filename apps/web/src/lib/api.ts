@@ -155,12 +155,14 @@ export interface GrowthReportResponse {
     activityData: { label: string; time: number; xp: number }[];
     words: { word: string; meaning: string; level: '상' | '중' | '하'; status: 'completed' | 'review' }[];
     prescription: string[];
+    weeklyScoreSeries?: { label: string; thisWeek: number | null; lastWeek: number | null }[];
   };
   monthly: {
     radarData: { subject: string; before: number; after: number }[];
     activityData: { label: string; time: number; xp: number }[];
     words: { word: string; meaning: string; level: '상' | '중' | '하'; status: 'completed' | 'review' }[];
     prescription: string[];
+    weeklyScoreSeries?: { label: string; thisWeek: number | null; lastWeek: number | null }[];
   };
   latestSessionSummary?: {
     quiz_count: number;

@@ -55,6 +55,16 @@ export default function DashboardPage() {
       try {
         const res = await api.getGrowthReport(userId);
         setDbData(res);
+        
+        // 7/14: DB에서 불러온 주간 리터러시 스코어 시계열(weeklyScoreSeries)을 스토어에 동기화
+        if (res.weekly?.weeklyScoreSeries) {
+          const mapped = res.weekly.weeklyScoreSeries.map((s) => ({
+            label: s.label,
+            thisWeek: s.thisWeek ?? undefined,
+            lastWeek: s.lastWeek ?? undefined
+          }));
+          useScoreStore.setState({ weeklyScoreSeries: mapped });
+        }
       } catch (err) {
         console.error('[Dashboard] Failed to load user metrics:', err);
       }
@@ -137,7 +147,7 @@ export default function DashboardPage() {
 
         {/* Literacy Score 전후 비교 그래프 (데모 핵심 ★) */}
         <div className="lg:col-span-8">
-          <GrowthDashboard />
+          <GrowthDashboard dbData={dbData} />
         </div>
 
         {/* 게이미피케이션 사이드 — scoreStore 실시간 */}

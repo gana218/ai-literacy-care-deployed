@@ -122,8 +122,11 @@ async function renderPdf(source) {
 }
 
 async function startSessionIfEnabled() {
-  const { enabled = false } = await chrome.storage.local.get("enabled");
+  const { enabled = false, apiBaseUrl } = await chrome.storage.local.get(["enabled", "apiBaseUrl"]);
   if (!enabled || session || extractedContent.length === 0) return;
+  if (apiBaseUrl) {
+    CFG.API_BASE = apiBaseUrl;
+  }
   const userId = await getUserId();
   session = window.ALC_Session.create({
     cfg: CFG,
