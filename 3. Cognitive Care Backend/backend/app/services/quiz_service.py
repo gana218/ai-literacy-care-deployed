@@ -103,6 +103,13 @@ def select_quiz_for_state(state: dict, ignore_asked: bool = False) -> list[dict]
     quizzes = state.get("quizzes", {})
     if not quizzes:
         return []
+
+    # 리스트인 경우 딕셔너리로 변환하여 호환성 확보 (AttributeError 방지)
+    if isinstance(quizzes, list):
+        quizzes = {
+            (q.get("sourceChunkId") or q.get("chunkId") or q.get("source_chunk_id")): q
+            for q in quizzes if isinstance(q, dict)
+        }
         
     asked_quiz_ids = state.get("asked_quiz_ids", [])
     events = state.get("reading_events", [])
