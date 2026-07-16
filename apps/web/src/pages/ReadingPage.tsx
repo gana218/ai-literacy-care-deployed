@@ -101,33 +101,67 @@ export default function ReadingPage() {
     }
   }, [progress, sessionId]);
 
-  // 7/14: 컴포넌트 언마운트(페이지 이탈) 시 세션 최종 저장 (완독 전에 페이지를 나갈 때도 데이터가 누실되지 않게 처리)
+  // 7/16: 페이지 이탈 시 세션 최종 저장을 sendBeacon으로 보강.
+  // fetch(keepalive: true)가 브라우저 종료 시 취소될 수 있는 문제를 해결한다.
   useEffect(() => {
-    return () => {
+    const saveSession = () => {
       const currentScores = useScoreStore.getState();
       const sId = useReadingStore.getState().sessionId;
       const finalized = useScoreStore.getState().isFinalized;
-      
+
       if (sId && !finalized) {
-        console.log('[ReadingPage] Page unmounting. Auto-finalizing session...');
-        useScoreStore.getState().setFinalizing(true);
-        // 남아있는 이벤트 큐가 있다면 최신 상태 전송
-        const remainingQueue = useReadingStore.getState().eventQueue;
-        if (remainingQueue.length > 0) {
-          api.sendEvents(sId, remainingQueue).catch(() => {});
-          useReadingStore.getState().clearQueue();
-        }
+        console.log('[ReadingPage] Saving session via sendBeacon...');
+        const baseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          ? (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000')
+          : 'https://ai-literacy-backend.onrender.com';
         
-        api.finishSession(sId, {
+        const payload = JSON.stringify({
           literacy_score: currentScores.literacyScore,
           comprehension_score: currentScores.comprehensionScore,
           engagement_score: currentScores.engagementScore,
-        }).catch((err) => {
-          console.error('[ReadingPage] Failed to auto-finalize session on unmount:', err);
-        }).finally(() => {
-          useScoreStore.getState().setFinalizing(false);
         });
+        
+        // sendBeacon은 페이지 언로드 중에도 안전하게 전송됨
+        const sent = navigator.sendBeacon(
+          `${baseUrl}/api/session/${sId}/finish`,
+          new Blob([payload], { type: 'application/json' })
+        );
+        
+        if (!sent) {
+          // sendBeacon 실패 시 fetch(keepalive) 폴백
+          fetch(`${baseUrl}/api/session/${sId}/finish`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+            keepalive: true,
+          }).catch(() => {});
+        }
       }
+    };
+
+    // 브라우저 탭 닫기/새로고침 시 → beforeunload에서 sendBeacon
+    const handleBeforeUnload = () => {
+      // 남은 이벤트 큐도 sendBeacon으로 전송
+      const sId = useReadingStore.getState().sessionId;
+      const remainingQueue = useReadingStore.getState().eventQueue;
+      if (sId && remainingQueue.length > 0) {
+        const baseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          ? (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000')
+          : 'https://ai-literacy-backend.onrender.com';
+        navigator.sendBeacon(
+          `${baseUrl}/api/session/${sId}/events`,
+          new Blob([JSON.stringify({ events: remainingQueue })], { type: 'application/json' })
+        );
+      }
+      saveSession();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // SPA 내부 네비게이션(언마운트) 시에도 저장
+      saveSession();
     };
   }, []);
 
@@ -335,16 +369,22 @@ export default function ReadingPage() {
 
     initSession();
 
-    // 큐 변경 실시간 감시 (blur·focus 이입 시에만 즉시 flush)
-    // 7/15: 'dwell'을 즉시-flush 트리거에서 제거. dwell은 스크롤 중 IntersectionObserver로
-    // 초당 수차례 발생해 flush 폭주(수백 요청/초)를 일으켜 응답 순서 역전의 원인이었다.
-    // dwell 감점은 1.5초 인터벌 flush로 충분히 반영된다. blur/focus(탭 전환)만 즉시 처리.
+    // 큐 변경 실시간 감시 — 즉시 flush 트리거
+    // 7/16: blur·focus 외에 빠른 스크롤(scrollVelocity > 0.8)도 즉시 flush 대상 추가.
+    // 집중도 100 상태에서 빠른 스크롤을 해도 1.5초 간격까지 대기하느라 감점이 지연되던 문제 수정.
+    let scrollFlushTimer: any = null;
     const unsubscribeQueue = useReadingStore.subscribe((state) => {
       const queue = state.eventQueue;
       if (queue.length > 0) {
         const lastEvent = queue[queue.length - 1];
+        // blur / focus → 즉시 flush
         if (lastEvent.type === 'blur' || lastEvent.type === 'focus') {
           flushQueue();
+        }
+        // 빠른 스크롤 → 300ms 디바운스 후 flush (연속 스크롤 시 과다 요청 방지)
+        else if (lastEvent.type === 'scroll' && lastEvent.payload?.scrollVelocity > 0.8) {
+          if (scrollFlushTimer) clearTimeout(scrollFlushTimer);
+          scrollFlushTimer = setTimeout(() => { flushQueue(); }, 300);
         }
       }
     });
@@ -353,6 +393,9 @@ export default function ReadingPage() {
       active = false;
       if (flushIntervalId) {
         clearInterval(flushIntervalId);
+      }
+      if (scrollFlushTimer) {
+        clearTimeout(scrollFlushTimer);
       }
       unsubscribeQueue();
       // 마지막 남은 잔여 이벤트 전송 시도

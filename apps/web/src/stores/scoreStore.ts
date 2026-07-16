@@ -6,6 +6,7 @@
  *   - quizResults 누적 → comprehensionScore 자동 재계산
  */
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { ScoreDataPoint, AcquiredBadge } from '../types/shared';
 import type { LiteracyDomains, TextProfile } from '../lib/api';
 
@@ -82,8 +83,10 @@ function calcComprehension(results: QuizResult[]): number {
   return Math.round((correct / results.length) * 100);
 }
 
-// ── Zustand Store ─────────────────────────────────────────────────────
-export const useScoreStore = create<ScoreState>((set, get) => ({
+// ── Zustand Store (7/16: persist 미들웨어 추가 — 대시보드 데이터 새로고침 보존) ──
+export const useScoreStore = create<ScoreState>()(
+  persist(
+    (set, get) => ({
   literacyScore: 0,
   comprehensionScore: 0,
   engagementScore: 0,
@@ -182,4 +185,23 @@ export const useScoreStore = create<ScoreState>((set, get) => ({
       isFinalized: false,
       isFinalizing: false,
     }),
-}));
+    {
+      name: 'ai-literacy-score-store', // localStorage key
+      // 7/16: 대시보드에 필요한 핵심 지표만 localStorage에 보존.
+      // scoreSeries(세션 라이브 차트)와 isFinalized 등 일시적 플래그는 보존하지 않는다.
+      partialize: (state) => ({
+        literacyScore: state.literacyScore,
+        comprehensionScore: state.comprehensionScore,
+        engagementScore: state.engagementScore,
+        xp: state.xp,
+        level: state.level,
+        levelProgress: state.levelProgress,
+        weeklyScoreSeries: state.weeklyScoreSeries,
+        badges: state.badges,
+        quizResults: state.quizResults,
+        literacyDomains: state.literacyDomains,
+        textProfile: state.textProfile,
+      }),
+    }
+  )
+);
