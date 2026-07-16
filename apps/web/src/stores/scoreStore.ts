@@ -185,23 +185,24 @@ export const useScoreStore = create<ScoreState>()(
       isFinalized: false,
       isFinalizing: false,
     }),
-    {
-      name: 'ai-literacy-score-store', // localStorage key
-      // 7/16: 대시보드에 필요한 핵심 지표만 localStorage에 보존.
-      // scoreSeries(세션 라이브 차트)와 isFinalized 등 일시적 플래그는 보존하지 않는다.
-      partialize: (state) => ({
-        literacyScore: state.literacyScore,
-        comprehensionScore: state.comprehensionScore,
-        engagementScore: state.engagementScore,
-        xp: state.xp,
-        level: state.level,
-        levelProgress: state.levelProgress,
-        weeklyScoreSeries: state.weeklyScoreSeries,
-        badges: state.badges,
-        quizResults: state.quizResults,
-        literacyDomains: state.literacyDomains,
-        textProfile: state.textProfile,
-      }),
-    }
+  }),
+  {
+    name: 'ai-literacy-score-store', // localStorage key
+    // 7/16: 대시보드에 필요한 핵심 지표만 localStorage에 보존.
+    // scoreSeries(세션 라이브 차트)와 isFinalized 등 일시적 플래그는 보존하지 않는다.
+    partialize: (state) => ({
+      literacyScore: state.literacyScore,
+      comprehensionScore: state.comprehensionScore,
+      engagementScore: state.engagementScore,
+      xp: state.xp,
+      level: state.level,
+      levelProgress: state.levelProgress,
+      weeklyScoreSeries: state.weeklyScoreSeries,
+      badges: state.badges,
+      quizResults: state.quizResults,
+      literacyDomains: state.literacyDomains,
+      textProfile: state.textProfile,
+    }),
+  }
   )
 );
