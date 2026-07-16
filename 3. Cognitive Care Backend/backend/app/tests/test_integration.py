@@ -1,4 +1,4 @@
-﻿"""통합 테스트 - M2 완성 검증 (7/6 구현)
+"""통합 테스트 - M2 완성 검증 (7/6 구현)
 
 Orchestrator 파이프라인 전체 흐름을 테스트합니다:
 1. Score Engine 계산 정확성
@@ -29,8 +29,11 @@ class TestScoreEngine:
             difficulty_score=60.0,
             abnormal_reading_penalty=0.0,
         )
-        # 80*0.5 + 70*0.35 + 60*0.15 = 40 + 24.5 + 9 = 73.5
-        assert 73.0 <= score <= 74.0, f"Expected ~73.5, got {score}"
+        # comp_score: 80.0 * 0.45 = 36.0
+        # focus_score: 70.0 * 0.30 = 21.0
+        # challenge: 0.8 * (0.6*60 + 0.4*50) = 44.8 * 0.25 = 11.2
+        # Total: 36.0 + 21.0 + 11.2 = 68.2
+        assert 68.0 <= score <= 69.0, f"Expected ~68.2, got {score}"
         assert breakdown["comprehension_score"] == 80.0
         assert breakdown["engagement_score"] == 70.0
     
@@ -42,8 +45,12 @@ class TestScoreEngine:
             difficulty_score=100.0,
             abnormal_reading_penalty=10.0,
         )
-        # 100*0.5 + 100*0.35 + 100*0.15 - 10 = 50 + 35 + 15 - 10 = 90
-        assert score == 90.0, f"Expected 90.0, got {score}"
+        # comp: 100 * 0.45 = 45.0
+        # focus: 100 * 0.30 = 30.0
+        # challenge: 1.0 * (0.6*100 + 0.4*50) = 80.0 * 0.25 = 20.0
+        # Penalty: -10
+        # Total: 45.0 + 30.0 + 20.0 - 10.0 = 85.0
+        assert score == 85.0, f"Expected 85.0, got {score}"
     
     def test_compute_score_clamped(self):
         from backend.app.orchestrator.score import compute_score
@@ -62,8 +69,8 @@ class TestScoreEngine:
             focus_score=70.0,
             difficulty_score=50.0,
         )
-        # NaN -> 50 (midpoint), so 50*0.5 + 70*0.35 + 50*0.15 = 25 + 24.5 + 7.5 = 57
-        assert 56.0 <= score <= 58.0, f"Expected ~57, got {score}"
+        # NaN -> 0.0, so 0*0.45 + 70*0.30 + 0 = 21.0
+        assert 20.5 <= score <= 21.5, f"Expected ~21.0, got {score}"
 
 
 class TestRouting:
@@ -266,9 +273,9 @@ class TestCognitiveCare:
     def test_focus_score_with_blur(self):
         from backend.app.services.cognitive_care import calculate_focus_score
         events = [
-            {"type": "blur", "duration_ms": 5000},
-            {"type": "scroll"},
-            {"type": "focus"},
+            {"type": "blur", "duration_ms": 5000, "timestamp_ms": 5000},
+            {"type": "scroll", "timestamp_ms": 11000},
+            {"type": "focus", "timestamp_ms": 12000},
         ]
         score = calculate_focus_score(events)
         assert score < 100.0, "Blur events should reduce focus score"

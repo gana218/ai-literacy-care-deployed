@@ -157,10 +157,9 @@ async def get_user_growth(user_id: str, db: AsyncSession = Depends(get_db)):
         after_comp = sum((s.comprehension_score or 50.0) for s in completed_sessions) / len(completed_sessions)
         after_lit = sum((s.literacy_score or 50.0) for s in completed_sessions) / len(completed_sessions)
     else:
-        # 완료 세션이 없는 경우, 임시로 첫 세션을 baseline으로 잡되 점수는 50.0(최초 기준선)으로 고정
-        first_session = sorted_sessions[0]
-        before_eng = before_comp = before_lit = 50.0
-        after_eng = after_comp = after_lit = 50.0
+        # 완료 세션이 없는 경우, 0.0으로 반환하여 프론트엔드가 로컬 세션 값(Zustand)을 덮어쓰지 않도록 함
+        before_eng = before_comp = before_lit = 0.0
+        after_eng = after_comp = after_lit = 0.0
     
     # 실제 활동(퀴즈 풀이 결과가 존재하거나, DB 이벤트가 있거나, Redis 실시간 이벤트가 존재하거나, 점수가 있거나 완독됨)
     session_ids_with_quizzes = set((await db.execute(select(QuizResult.session_id).distinct())).scalars().all())
